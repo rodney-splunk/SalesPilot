@@ -20,16 +20,32 @@ export function competitiveRequest(text,prior=[]) {
  if(/\bsplunk cloud\b.{0,60}\benterprise\b|\benterprise\b.{0,60}\bsplunk cloud\b/i.test(text) && !competitors(text).length)return null;
  let named=competitors(text);
  if(!named.length && /\b(?:they|them|those|it|that|both|two|one|ones)\b/i.test(text) && question.test(text)) {
-  const context=[...prior.slice(-4)].reverse().find(t=>competitors(t.text||t).length);if(context)named=competitors(context.text||context);
+  const context=[...prior.slice(-4)].reverse().find(t=>competitors(t.text||t).length || (/\bsplunk cloud\b/i.test(t.text||t)&&/\benterprise\b/i.test(t.text||t)));
+  if(context && !competitors(context.text||context).length)return null;
+  if(context)named=competitors(context.text||context);
  }
- if(!named.length || !question.test(text))return null;
+ const compare=/\b(?:difference|differ\w*|compar\w*|versus|vs\.?|better|cheaper|more expensive|how.{0,20}stack|why.{0,20}splunk|advantage|disadvantage|instead of|rather than|alternative|replace|switch from)\b/i;
+ if(!named.length || !question.test(text) || !compare.test(text))return null;
  return {category:'competition',competitors:named.map(c=>c.id),query:`Splunk Core versus ${named.map(c=>c.name).join(' and ')}: ${text}`,question:text};
+}
+export function competitorTechnicalRequest(text,prior=[]) {
+ if(/^(?:we|they|i|the customer)\s+(?:asked|wondered|used to ask)\b/i.test(text))return null;
+ if(/\bsplunk\b/i.test(text)||!(/\?|^(?:how|what|which|can|could|does|do|is|are|will|would|tell me|explain)\b|\b(?:curious|wondering)\b/i.test(text))||/\b(?:difference|differ\w*|compar\w*|versus|instead of|better|cheaper|alternative)\b/i.test(text))return null;
+ let named=competitors(text);
+ if(!named.length && /\b(?:it|that|they|them|those)\b/i.test(text)){
+  const last=[...prior.slice(-4)].reverse().find(t=>competitors(t.text||t).length || /\bsplunk\b/i.test(t.text||t));
+  if(last && !/\bsplunk\b/i.test(last.text||last))named=competitors(last.text||last);
+ }
+ if(named.length!==1 || !/\b(?:support\w*|ingest\w*|collect\w*|retain\w*|retention|deploy\w*|integrat\w*|agent|api|encrypt\w*|sso|feature\w*|logs?|metrics|traces?|pricing|cost)\b/i.test(text))return null;
+ return {category:'product',query:`Vendor capability: ${named[0].name}: ${text}`,question:text};
 }
 export function competitiveSignals(turns,sideOf=t=>t.side) {
  const eligible=turns.filter(t=>!['seller','presenter'].includes(sideOf(t))&&!['mixed','ambiguous'].includes(t.speakerStatus));
  return catalog.flatMap(c=>{const mentions=eligible.filter(t=>c.aliases.test(t.text));if(!mentions.length)return [];const t=mentions.at(-1);return [{id:c.id,name:c.name,quote:t.text,speaker:t.who||'Customer',turnId:t.id,probe:c.probe,themes:c.themes,resources:internalResources.filter(r=>r.competitor==='all'||r.competitor===c.id)}]});
 }
 export const internalResources=[
+ {competitor:'datadog',title:'Datadog Compete Card · Klue',url:'https://v2.app.klue.com/profile/88269/battlecard/view?cardId=4621177',scope:'Internal CI · card reviewed Oct 1, 2026; includes Core, Observability and ITSI scope',verifiedAt:'2026-10-02'},
+ {competitor:'dynatrace',title:'Dynatrace Compete Card · Klue',url:'https://v2.app.klue.com/profile/88595/battlecard/view?cardId=4621192',scope:'Internal CI · link verified in CI Slack; card content not reviewed',verifiedAt:'2026-10-02'},
  {competitor:'sumo',title:'Sumo Logic battlecards · Klue',url:'https://v2.app.klue.com/profile/88593/battlecard/view',scope:'Internal enablement · reviewed Oct 2; board updated Sep 29, 2026',verifiedAt:'2026-10-02'},
  {competitor:'all',title:'Competitive intelligence · Klue',url:'https://v2.app.klue.com/dashboard',scope:'Internal resource · Cisco sign-in required',verifiedAt:'2026-10-02'}
 ];

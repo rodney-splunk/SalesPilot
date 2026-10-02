@@ -1,5 +1,5 @@
 import {callPurpose,demoRequest,discoveryRedirect} from './call-purpose.mjs';
-import {competitiveRequest} from './competition.mjs';
+import {competitiveRequest,competitorTechnicalRequest} from './competition.mjs';
 import {completedThought} from './coach-timing.mjs';
 import {referenceRequest} from './answer-policy.mjs';
 export function dialoguePlan(text, prior=[], options={}) {
@@ -7,6 +7,7 @@ export function dialoguePlan(text, prior=[], options={}) {
  if(callPurpose(options.mode)==='discovery' && demoRequest(text))return {kind:'redirect',question:discoveryRedirect(text),target:'Discovery focus',reason:'Acknowledge the demo request and use discovery to define a useful next-step demo.'};
  const competitive=competitiveRequest(text,prior);if(competitive)return {kind:'answer',request:competitive,reason:'Answer the competitive question from verified sources, then validate the customer’s criteria.'};
  if(/\b(?:can|could|would) you (?:show|demonstrate|pull up)\b/i.test(text) && /\b(?:on|during) (?:this|the|our) call\b/i.test(text) && !/\b(?:how|support|integrat|deploy|licens|pricing)\b/i.test(text))return {kind:'respond',customerQuestion:{query:text},reason:'Respond to their demonstration request using the current conversation; do not search for Splunk On-Call.'};
+ const vendorCapability=competitorTechnicalRequest(text,prior);if(vendorCapability)return {kind:"answer",request:vendorCapability,reason:"Answer the named product capability from its own documentation; this is not a competitive positioning question."};
  const request=referenceRequest(text,prior);
  if(/\bwindows\s+syslogs?\b/i.test(text)&&!(/\b(?:both|windows event logs.{0,40}syslog|syslog.{0,40}windows event logs)\b/i.test(text)))return {kind:'clarify',question:'Do you mean Windows Event Logs, syslog from network devices, or both?',reason:'Confirm the source type before recommending a collection path.'};
  if(request)return {kind:'answer',request,reason:'Resolve the customer’s product question before opening another discovery thread.'};

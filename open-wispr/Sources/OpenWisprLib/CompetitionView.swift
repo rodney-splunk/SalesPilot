@@ -34,23 +34,7 @@ struct CompetitionView: View {
                 ForEach(competitiveAnswers.indices.reversed(), id: \.self) { i in
                     if !competitiveAnswers[i].matchesQuestion(current) { LiveAnswerCard(answer: competitiveAnswers[i]) }
                 }
-                ForEach(signals) { signal in
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack { Text(signal.name).font(.headline); Spacer(); Text("Mentioned on call").font(.caption).foregroundStyle(.secondary) }
-                        Button { onEvidence(signal.quote) } label: { VStack(alignment: .leading, spacing: 5) { Text(signal.quote).font(.callout).fixedSize(horizontal: false, vertical: true); Text(signal.speaker + " · open transcript").font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
-                        Divider()
-                        Text("VALIDATE THE FIT").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
-                        Text(signal.probe).font(.system(size: 15, weight: .medium)).textSelection(.enabled)
-                        Text(signal.themes.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-                        CollapsibleSection("Internal enablement", detail: "For your preparation; not customer evidence", initialExpanded: false) {
-                            ForEach(signal.resources) { resource in
-                                if let url = URL(string: resource.url), url.scheme == "https" {
-                                    VStack(alignment: .leading, spacing: 3) { Link(resource.title, destination: url).font(.callout); Text(resource.scope).font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 4)
-                                }
-                            }
-                        }
-                    }.padding(18).background(SalesPilotStyle.accent.opacity(0.05), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(SalesPilotStyle.accent.opacity(0.12)))
-                }
+                CompetitiveContextCards(signals: signals, onEvidence: onEvidence)
                 let tracked = questions.filter { $0.kind == "competition" }
                 ForEach(tracked) { question in
                     VStack(alignment: .leading, spacing: 8) {
@@ -67,6 +51,32 @@ struct CompetitionView: View {
                     }.padding(22).background(SalesPilotStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
                 }
             }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+struct CompetitiveContextCards: View {
+    let signals: [CompetitiveSignal]
+    var onEvidence: (String) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+ForEach(signals) { signal in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack { Text(signal.name).font(.headline); Spacer(); Text("Mentioned on call").font(.caption).foregroundStyle(.secondary) }
+                        Button { onEvidence(signal.quote) } label: { VStack(alignment: .leading, spacing: 5) { Text(signal.quote).font(.callout).fixedSize(horizontal: false, vertical: true); Text(signal.speaker + " · open transcript").font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
+                        Divider()
+                        Text("VALIDATE THE FIT").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
+                        Text(signal.probe).font(.system(size: 15, weight: .medium)).textSelection(.enabled)
+                        Text(signal.themes.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                        CollapsibleSection("Internal enablement", detail: "For your preparation; not customer evidence", initialExpanded: false) {
+                            ForEach(signal.resources) { resource in
+                                if let url = URL(string: resource.url), url.scheme == "https" {
+                                    VStack(alignment: .leading, spacing: 3) { Link(resource.title, destination: url).font(.callout); Text(resource.scope).font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 4)
+                                }
+                            }
+                        }
+                    }.padding(18).background(SalesPilotStyle.accent.opacity(0.05), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(SalesPilotStyle.accent.opacity(0.12)))
+                }
         }
     }
 }

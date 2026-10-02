@@ -10,7 +10,10 @@ struct LiveAnswerCard: View {
                 Text(answer.requestFailed == true ? "Request failed" : answer.status == "searching" ? "Searching docs" : answer.status == "grounded" ? "Sources found" : "Needs confirmation")
                     .font(.system(size: 10, weight: .medium)).foregroundStyle(answer.status == "unverified" ? Color.orange : Color.secondary)
             }
-            Text(answer.q).font(.system(size: 14, weight: .semibold)).textSelection(.enabled)
+            if answer.category == "competition" {
+                Text("Documentation comparison · internal CI references are separate").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Text(answer.q).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if answer.status == "searching" { ProgressView().controlSize(.small) }
             Text(answer.displayAnswer).font(.system(size: 15)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             ForEach(answer.sources ?? [], id: \.self) { source in
@@ -29,17 +32,37 @@ struct LiveAnswersView: View {
     let history: [LiveAnswer]
     var questions: [CustomerQuestion] = []
     var canResolve = false
+    @Binding var category: String
+    var signals: [CompetitiveSignal] = []
+    var onEvidence: (String) -> Void
+    private func includes(_ competitive: Bool) -> Bool { category == "all" || (competitive ? category == "competition" : category == "technical") }
+    private var visibleQuestions: [CustomerQuestion] { questions.filter { includes($0.kind == "competition") } }
+    private var visibleHistory: [LiveAnswer] {
+        var seen = Set<String>()
+        return Array(history.reversed().filter {
+            let identity = $0.questionId.map { "question:\($0)" } ?? ($0.q + "\n" + $0.answer)
+            return includes($0.category == "competition") && seen.insert(identity).inserted
+        }.reversed())
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Live answers").font(.system(size: 22, weight: .semibold, design: .rounded))
-                Text("Customer product questions trigger a search of official Splunk sources and your knowledge library. Answers appear here and in Coach as sources are checked.")
+                HStack {
+                    Text("Answers").font(.system(size: 22, weight: .semibold, design: .rounded))
+                    Spacer()
+                    Menu(category == "competition" ? "Competitive" : category == "technical" ? "Technical" : "All answers") {
+                        Button("All answers") { category = "all" }
+                        Button("Technical") { category = "technical" }
+                        Button("Competitive") { category = "competition" }
+                    }.fixedSize(horizontal: true, vertical: false).help("Technical: how a product works. Competitive: comparisons, alternatives and positioning.")
+                }
+                Text("Technical questions use product documentation. Competitive questions use comparison evidence and CI resources. Both stay here with their sources and open questions.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
-                if !questions.isEmpty {
+                if !visibleQuestions.isEmpty {
                     CollapsibleSection("Customer questions", detail: "Stay open until answered or deferred", initialExpanded: true) {
-                        ForEach(questions) { question in
+                        ForEach(visibleQuestions) { question in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(question.q).font(.callout).textSelection(.enabled)
+                                Text(question.q).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                                 Text(question.speaker + " · " + question.status.replacingOccurrences(of: "_", with: " ").capitalized).font(.caption).foregroundStyle(.secondary)
                                 if question.status != "searching", let answer = question.answer { Text(answer.displayAnswer).font(.callout).foregroundStyle(.secondary) }
                                 if canResolve {
@@ -57,14 +80,19 @@ struct LiveAnswersView: View {
                         }
                     }
                 }
-                if let current { LiveAnswerCard(answer: current) }
-                ForEach(history.indices.reversed(), id: \.self) { i in
-                    if !history[i].matchesQuestion(current) { LiveAnswerCard(answer: history[i]) }
+                if let current, includes(current.category == "competition") { LiveAnswerCard(answer: current) }
+                ForEach(visibleHistory.indices.reversed(), id: \.self) { i in
+                    if !visibleHistory[i].matchesQuestion(current) { LiveAnswerCard(answer: visibleHistory[i]) }
                 }
-                if current == nil && history.isEmpty && questions.isEmpty {
+                if category != "technical", !signals.isEmpty {
+                    CollapsibleSection("Competitive context", detail: "Customer criteria and internal CI references", initialExpanded: false) {
+                        CompetitiveContextCards(signals: signals, onEvidence: onEvidence)
+                    }
+                }
+                if (current == nil || !includes(current?.category == "competition")) && visibleHistory.isEmpty && visibleQuestions.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Ready for a product question", systemImage: "bubble.left.and.text.bubble.right").font(.headline)
-                        Text("For example: Can Splunk ingest our firewall logs? You can keep listening while the answer and sources appear.")
+                        Label(category == "competition" ? "Ready for a competitive question" : "Ready for a product question", systemImage: "bubble.left.and.text.bubble.right").font(.headline)
+                        Text(category == "competition" ? "For example: How does Splunk compare with Datadog for our investigation workflow?" : "For example: Can Splunk ingest our firewall logs? You can keep listening while the answer and sources appear.")
                             .font(.callout).foregroundStyle(.secondary)
                         Text("Pricing comparisons need matching scope and a quote. The coach marks details it cannot verify for follow-up.")
                             .font(.system(size: 12)).foregroundStyle(.secondary)

@@ -966,6 +966,7 @@ async function answerFromDocs(q, reqId, query = q, questionId = null) {
   if (answerInFlight) { pendingQ = { q, reqId, query, questionId }; return; } // supersede: keep only the newest
   answerInFlight = true;
   const competitive = query.startsWith("Splunk Core versus ");
+  const vendorCapability = query.startsWith("Vendor capability: ");
   const answerCategory = competitive ? "competition" : "product";
   const answerStarted = performance.now();
   const controller = new AbortController();
@@ -973,11 +974,12 @@ async function answerFromDocs(q, reqId, query = q, questionId = null) {
   let answerTimer = setTimeout(()=>controller.abort(new DOMException("Live answer deadline","TimeoutError")),20000);
   try {
     const lookupStarted = performance.now();
-    const [hits, docs, pricing] = await abortable(Promise.all([search(query, 5), competitive ? competitiveSources(query) : searchSplunkDocs(query, 4), competitive ? Promise.resolve([]) : publicPricingSources(query)]),controller.signal);
+    const [hits, docs, pricing] = await abortable(Promise.all([search(query, 5), (competitive || vendorCapability) ? competitiveSources(query) : searchSplunkDocs(query, 4), (competitive || vendorCapability) ? Promise.resolve([]) : publicPricingSources(query)]),controller.signal);
     recordTiming("documentLookup",performance.now()-lookupStarted);
     const official = [...docs, ...pricing];
     if (reqId !== questionSeq) return;
-    let refs = competitive ? competitionReferences(hits,official) : references(hits, official, query);
+    let refs = (competitive || vendorCapability) ? competitionReferences(hits,official) : references(hits, official, query);
+    if(vendorCapability){const named=competitors(query);refs=refs.filter(r=>named.some(c=>c.urls.some(u=>new URL(u).hostname===new URL(r.source.startsWith('https:')?r.source:'https://local.invalid').hostname))).map((r,i)=>({...r,id:`S${i+1}`}));}
     const standby=callKnowledge.get(questionId);
     if(competitive && standby){const records=new Map([...standby.refs,...refs].map(r=>[r.source+'\n'+r.text,r]));refs=[...records.values()].map((r,i)=>({...r,id:`S${i+1}`}));}
     const context = refs.map(r => `[${r.id}] ${r.title || r.source}\nSource: ${r.source}\n${r.text}`).join("\n\n");
@@ -986,11 +988,12 @@ async function answerFromDocs(q, reqId, query = q, questionId = null) {
     if (!await waitForAnswerContext({current:()=>reqId===questionSeq&&!callEnded,blocked:()=>audioActivity.blocked(turns.at(-1)),lastChanged:()=>answerContextChangedAt,signal:controller.signal}))return;
     const recent = coachTranscript();
     answerTimer=setTimeout(()=>controller.abort(new DOMException("Answer generation deadline","TimeoutError")),15000);
-    const raw = context ? await serialLLM(() => callQuality(competitive ? competitiveAnswerPrompt : answerPrompt,
+    const raw = context ? await serialLLM(() => callQuality(competitive ? competitiveAnswerPrompt : vendorCapability ? answerPrompt+"\nThis question is about the explicitly named vendor, not Splunk. Attribute the answer to that vendor and use only its provided documentation; do not offer a competitive comparison." : answerPrompt,
       `Recent conversation (context, not evidence):\n${recent}\n\nReferences:\n${context}\n\nQuestion: ${q}`, 400, true, {task:"answer",signal:controller.signal,timeoutMs:15000}), "answer") : "";
     clearTimeout(answerTimer);
     if (reqId !== questionSeq) return;
-    const grounded = groundedAnswer(raw, refs, q);
+    let grounded = groundedAnswer(raw, refs, q);
+    if(vendorCapability && grounded && /\bsplunk\b/i.test(grounded.answer))grounded=null; // never turn a rival capability answer into a Splunk claim
     const result = competitive ? validateCompetitiveAnswer(grounded,refs,query) : grounded;
     if(result && competitive){
       // Legacy/provider single-paragraph output remains readable without inventing claims.

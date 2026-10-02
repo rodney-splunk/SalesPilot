@@ -195,6 +195,7 @@ struct ReviewView: View {
     @State private var showReferences = false
     @State private var workspaceTab = "coach"
     @State private var researchSection = "answers"
+    @State private var answerCategory = "all"
     @AppStorage("callPurpose") private var callPurpose = "standard"
     @State private var selectedCoverage: String? = nil
     @State private var selectedEvidence: String? = nil
@@ -210,7 +211,8 @@ struct ReviewView: View {
     init(notes: Bool = false, section: String? = nil) {
         let research = ["answers", "competition", "opportunities"].contains(section ?? "")
         _workspaceTab = State(initialValue: research ? "research" : section ?? (notes ? "notes" : "coach"))
-        _researchSection = State(initialValue: research ? section! : "answers")
+        _researchSection = State(initialValue: section == "opportunities" ? "opportunities" : "answers")
+        _answerCategory = State(initialValue: section == "competition" ? "competition" : "all")
     }
 
     private let frameworks = ["MEDDPICC", "SPIN", "Challenger"]
@@ -339,7 +341,7 @@ struct ReviewView: View {
                     Picker("Workspace section", selection: $workspaceTab) {
                         Text("Coach").tag("coach").help("One next question and your framework coverage. Use these as listening cues, not a script.")
                         Text("Notes").tag("notes").help("Customer statements collected by topic, with corrections and links back to the transcript.")
-                        Text("Research").tag("research").help("Answers, competition and opportunities in one place. Coach links directly to the relevant view.")
+                        Text("Research").tag("research").help("Technical and competitive answers together, with opportunities alongside. Coach links directly to the relevant view.")
                     }.pickerStyle(.segmented).labelsHidden().padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 8)
                     if let people = session.roster, !people.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -364,14 +366,12 @@ struct ReviewView: View {
                     } else if workspaceTab == "research" {
                         VStack(spacing: 0) {
                             Picker("Research view", selection: $researchSection) {
-                                Text("Answers").tag("answers"); Text("Competition").tag("competition"); Text("Opportunities").tag("opportunities")
+                                Text("Answers").tag("answers"); Text("Opportunities").tag("opportunities")
                             }.pickerStyle(.segmented).labelsHidden().padding(.horizontal, 24).padding(.vertical, 12)
-                            if researchSection == "competition" {
-                                CompetitionView(signals: session.competition ?? [], current: session.liveAnswer, history: session.answerHistory ?? [], questions: session.customerQuestions ?? [], canResolve: live.listening) { quote in selectedEvidence = quote; showTranscript = true }
-                            } else if researchSection == "opportunities" {
+                            if researchSection == "opportunities" {
                                 OpportunitiesView(opportunities: session.opportunities ?? []) { quote in selectedEvidence = quote; showTranscript = true }
                             } else {
-                                LiveAnswersView(current: session.liveAnswer?.category == "competition" ? nil : session.liveAnswer, history: (session.answerHistory ?? []).filter { $0.category != "competition" }, questions: session.customerQuestions ?? [], canResolve: live.listening)
+                                LiveAnswersView(current: session.liveAnswer, history: session.answerHistory ?? [], questions: session.customerQuestions ?? [], canResolve: live.listening, category: $answerCategory, signals: session.competition ?? []) { quote in selectedEvidence = quote; showTranscript = true }
                             }
                         }
                     } else { rail }
@@ -593,7 +593,7 @@ struct ReviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if let answer = session.liveAnswer {
-                    Button { researchSection = answer.category == "competition" ? "competition" : "answers"; workspaceTab = "research" } label: {
+                    Button { answerCategory = answer.category == "competition" ? "competition" : "technical"; researchSection = "answers"; workspaceTab = "research" } label: {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "books.vertical")
                             VStack(alignment: .leading, spacing: 4) {
@@ -635,7 +635,7 @@ struct ReviewView: View {
                     }
                     let openQuestions = (session.customerQuestions ?? []).filter { !["answered", "deferred"].contains($0.status) }
                     if !openQuestions.isEmpty {
-                        Button("\(openQuestions.count) unanswered question\(openQuestions.count == 1 ? "" : "s")") { researchSection = openQuestions.allSatisfy { $0.kind == "competition" } ? "competition" : "answers"; workspaceTab = "research" }
+                        Button("\(openQuestions.count) unanswered question\(openQuestions.count == 1 ? "" : "s")") { answerCategory = openQuestions.allSatisfy { $0.kind == "competition" } ? "competition" : "all"; researchSection = "answers"; workspaceTab = "research" }
                             .font(.caption).buttonStyle(.plain).foregroundStyle(SalesPilotStyle.accent)
                     }
                     if live.listening, session.coachProgress?.state == "failed" {

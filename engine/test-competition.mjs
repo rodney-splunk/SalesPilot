@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
-import {competitors,competitiveRequest,competitiveSignals,competitiveSources,competitionReferences,validateCompetitiveAnswer} from './competition.mjs';
+import {competitors,competitiveRequest,competitorTechnicalRequest,competitiveSignals,competitiveSources,competitionReferences,validateCompetitiveAnswer} from './competition.mjs';
 import {groundedAnswer} from './answer-policy.mjs';
 assert.equal(competitiveRequest('What is the difference between you and Sumo Logic?').category,'competition');
 assert.equal(competitiveRequest('Which one is cheaper?',[{text:'We use Sumo Logic and are evaluating Splunk.'}]).competitors[0],'sumo');
 assert.equal(competitiveRequest('How do Splunk Cloud and Splunk Enterprise differ?',[{text:'We use Sumo Logic.'}]),null);
 assert.equal(competitiveRequest('We use Sumo Logic for log analysis.'),null);
+assert.equal(competitiveRequest('Can Splunk ingest Datadog logs?'),null);
+assert.equal(competitiveRequest('How do they differ?',[{text:'We use Datadog.'},{text:'Now comparing Splunk Cloud and Splunk Enterprise.'}]),null);
+assert.equal(competitorTechnicalRequest('We asked whether Datadog supports log collection?'),null);
+assert.equal(competitorTechnicalRequest('Does Datadog support log collection').category,'product');
+assert.equal(competitiveRequest('Does Datadog support syslog collection?'),null);
+assert.equal(competitorTechnicalRequest('Does Datadog support syslog collection?').category,'product');
+assert.equal(competitorTechnicalRequest('Can Splunk ingest Datadog logs?'),null);
+assert.equal(competitorTechnicalRequest('Can it collect syslog?',[{text:'We use Datadog.'}]).category,'product');
+assert.equal(competitorTechnicalRequest('Can it collect syslog?',[{text:'We use Datadog.'},{text:'We are discussing Splunk.'}]),null);
+
 assert.equal(competitors('sumo wrestling and an elastic band').length,0);
 const turns=[{id:1,text:'We use Sumo Logic.',who:'Jesse',side:'customer'},{id:2,text:'Datadog is another option.',side:'seller'},{id:3,text:'Elastic is an option.',side:'customer',speakerStatus:'mixed'}];
 assert.deepEqual(competitiveSignals(turns).map(x=>x.id),['sumo']);
