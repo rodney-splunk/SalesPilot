@@ -8,6 +8,7 @@ import {continuationCluster} from './speaker-continuity.mjs';
 import {addressedName,statedRole,normalizeRepGreeting,prepPeople,reconcilePreparedName} from './call-name-hints.mjs';
 import {QuestionLedger,coverageDetails} from './question-ledger.mjs';
 const questionLedger = new QuestionLedger();
+let callEnded = false;
 let coachProgress = {state:'listening',message:'Listening for a complete customer thought.'};
 import { recordTiming, performanceSnapshot, abortable } from './performance.mjs';
 import { dialoguePlan, discoveryGuidance } from './dialogue-plan.mjs';
@@ -215,7 +216,7 @@ let liveAnswer = null;
 const answerHistory = [];
 function saveAnswer(answer) {
   liveAnswer = answer;
-  if(answer.status==='unverified')coachProgress={state:'failed',message:'Could not verify the product answer. Keep it open or defer explicitly.'};
+  coachProgress = {state:answer.requestFailed ? 'failed' : answer.status==='grounded' ? 'ready' : 'needs_confirmation', message:answer.requestFailed ? 'Documentation request failed. Retry the search or defer the question.' : answer.status==='grounded' ? 'A sourced answer is ready. Review it before delivery.' : 'Evidence is insufficient. Keep the question open or defer it.'};
   if(answer.questionId)questionLedger.lookup(answer.questionId,answer.status === "grounded" ? "ready" : "needs_confirmation",answer);
   answerHistory.push({...answer, receivedAt: Date.now()});
 }
@@ -958,6 +959,7 @@ function serialLLM(fn, lane = "coach") {
 // about pricing"), and "does THAT" (the auxiliary list only had it/your/the).
 // Resolve only the latest technical request from readable reference evidence.
 async function answerFromDocs(q, reqId, query = q, questionId = null) {
+  if (callEnded) return;
   if (answerInFlight) { pendingQ = { q, reqId, query, questionId }; return; } // supersede: keep only the newest
   answerInFlight = true;
   const competitive = query.startsWith("Splunk Core versus ");
@@ -986,14 +988,14 @@ async function answerFromDocs(q, reqId, query = q, questionId = null) {
   } catch (e) {
     console.error(`[serve] rag error: ${e.message}`);
     if (reqId === questionSeq) {
-      saveAnswer({ q, questionId, category:answerCategory, answer: "I cannot check the documentation right now. I will confirm this and follow up.", sources: [], status: "unverified" });
+      saveAnswer({ q, questionId, category:answerCategory, requestFailed:true, answer: "I cannot check the documentation right now. I will confirm this and follow up.", sources: [], status: "unverified" });
       writeSession();
     }
   } finally {
     clearTimeout(answerTimer);
     if(activeAnswerController===controller)activeAnswerController=null;
     recordTiming("liveAnswer",performance.now()-answerStarted,reqId===questionSeq?"completed":"superseded");
-    if(questionId && questionLedger.items.find(q=>q.id===questionId)?.status==='searching')questionLedger.lookup(questionId,'needs_confirmation');
+    if(reqId===questionSeq && questionId && questionLedger.items.find(q=>q.id===questionId)?.status==='searching')questionLedger.lookup(questionId,'needs_confirmation');
     answerInFlight = false;
     if (pendingQ) { const p = pendingQ; pendingQ = null; answerFromDocs(p.q, p.reqId, p.query,p.questionId); } // run the latest pending
   }
@@ -1131,6 +1133,7 @@ const attributionTasks = new Set();
 const attributionByTurn = new Map();
 let coachSettleTimer = null;
 function scheduleCoach(turn) {
+  if(callEnded)return;
   if(turn.coachIntent && turn.coachIntent !== 'explore' && !turn.coachCheckpoint)return;
   if(!currentCoachTurn(turn,turns.at(-1))) return;
   pendingCoachTurn = turn;
@@ -1262,6 +1265,21 @@ for await (const line of rl) {
   try { seg = JSON.parse(s); } catch { continue; }
   if (!seg || typeof seg !== "object" || Array.isArray(seg)) continue; // null/array/scalar → skip (no crash)
 
+  if(seg.cmd === 'retry') {
+    if(callEnded)continue;
+    if(Number.isInteger(seg.id)) {
+      const item=questionLedger.open.find(q=>q.id===seg.id && ['answer','competition'].includes(q.kind));
+      if(!item || item.status==='searching')continue;
+      const source=turns.find(t=>item.turnIds.includes(t.id));
+      if(!source || ['mixed','ambiguous'].includes(source.speakerStatus) || ['seller','presenter'].includes(turnSide(source)))continue;
+      for(const q of questionLedger.open)if(q.status==='searching')questionLedger.lookup(q.id,'needs_confirmation');
+      const requestId=++questionSeq; activeAnswerController?.abort(new DOMException('Explicit retry','AbortError')); pendingQ=null;
+      questionLedger.lookup(item.id,'searching');
+      liveAnswer={q:item.q,questionId:item.id,category:item.kind==='competition'?'competition':'product',status:'searching',answer:'Retrying official documentation and your knowledge library…',sources:[]};
+      engineError=null;writeSession();answerFromDocs(item.q,requestId,item.query,item.id);
+    } else if(coachProgress.state==='failed') { engineError=null; const latest=turns.at(-1); if(latest)scheduleCoach(latest); }
+    continue;
+  }
   if(seg.cmd === 'question' && Number.isInteger(seg.id)) {
     if(questionLedger.resolve(seg.id,seg.status))writeSession();
     continue;
@@ -1287,6 +1305,7 @@ for await (const line of rl) {
     // or the recap would summarise a transcript that is missing the end of the call.
     while (draining || turnQueue.length) await new Promise((r) => setTimeout(r, 50));
     await Promise.allSettled([...attributionTasks]);
+    callEnded=true; coachProgress={state:"stopped",message:"Call ended. Pending requests cancelled."};
     activeCoachController?.abort(new DOMException("Call ended","AbortError")); pendingCoachTurn=null; clearTimeout(coachSettleTimer);
     questionSeq++; activeAnswerController?.abort(new DOMException("Call context ended or corrected","AbortError")); pendingQ = null; questionLedger.end(); if(liveAnswer?.status==="searching")liveAnswer=answerHistory.at(-1)||null; questionLedger.end(); await makeRecap(); writeSession(); archiveSession(); continue;
   }
@@ -1490,6 +1509,7 @@ if (!me || turn.side === "customer") {
   if (!["seller", "presenter"].includes(turn.side) && docRequest) {
     if (!followupsSet.has(text)) { followupsSet.add(text); followups.push(text); }
     const tracked=questionLedger.add({...turn,who:custLabel(turn)},docRequest,docRequest.category==="competition"?"competition":"answer");
+    for(const q of questionLedger.open)if(q.id!==tracked.id && q.status==='searching')questionLedger.lookup(q.id,'needs_confirmation');
     turn.questionId=tracked.id;questionLedger.lookup(tracked.id,'searching');
     liveAnswer = { questionId:tracked.id,q: text, category:docRequest.category || "product", answer: "Searching official documentation and your knowledge library…", sources: [], status: "searching" };
     writeSession();

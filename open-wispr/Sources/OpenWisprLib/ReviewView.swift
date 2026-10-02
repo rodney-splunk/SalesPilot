@@ -24,7 +24,7 @@ struct CoverageDetail: Codable { var id: String; var name: String; var status: S
 struct CovData: Codable { var name: String; var status: String }
 struct NextQData: Codable { var q: String; var tag: String; var reason: String? = nil }
 struct SpeakerData: Codable { var clusterId: Int; var label: String; var side: String; var organization: String? = nil }
-struct LiveAnswer: Codable { var q: String; var answer: String; var sources: [String]?; var status: String? = nil; var sourceTitles: [String: String]? = nil; var category: String? = nil }
+struct LiveAnswer: Codable { var q: String; var answer: String; var sources: [String]?; var status: String? = nil; var sourceTitles: [String: String]? = nil; var category: String? = nil; var requestFailed: Bool? = nil }
 struct MentionedPerson: Codable { var name: String; var role: String; var organization: String; var inferred: Bool; var attendance: String; var quote: String; var who: String; var turnId: Int? }
 struct Person: Codable { var name: String; var role: String?; var decisionMaker: Bool?; var side: String? = nil; var organization: String? = nil; var nameEvidence: String? = nil }
 /// How you're DELIVERING, not what you're asking. These are the four things discovery is actually
@@ -587,7 +587,7 @@ struct ReviewView: View {
                 if let notice = live.audioNotice {
                     Label(notice, systemImage: "ear.badge.waveform").font(.system(size: 12)).foregroundStyle(.orange)
                 }
-                if let warning = session.audioWarning, !warning.isEmpty, !warning.hasPrefix("Duplicate call audio detected and removed"), !warning.hasPrefix("Possible speakerphone bleed:") {
+                if live.listening, let warning = session.audioWarning, !warning.isEmpty, !warning.hasPrefix("Duplicate call audio detected and removed"), !warning.hasPrefix("Possible speakerphone bleed:") {
                     Label(warning, systemImage: "exclamationmark.triangle")
                         .font(.system(size: 12)).foregroundStyle(.orange)
                 }
@@ -601,14 +601,21 @@ struct ReviewView: View {
                     if live.listening, let progress = session.coachProgress {
                         HStack(spacing: 7) {
                             if ["generating", "searching"].contains(progress.state) { ProgressView().controlSize(.mini) }
-                            Text(progress.state == "generating" ? "Generating a follow-up" : progress.state == "searching" ? "Searching docs" : progress.state == "failed" ? "Request failed" : "Listening")
+                            Text(progress.state == "generating" ? "Generating a follow-up" : progress.state == "searching" ? "Searching docs" : progress.state == "failed" ? "Request failed" : progress.state == "needs_confirmation" ? "Needs confirmation" : progress.state == "ready" ? "Answer ready" : "Listening")
                                 .font(.system(size: 11, weight: .semibold)).foregroundStyle(progress.state == "failed" ? Color.orange : Color.secondary)
-                        }.help(progress.message)
+                        }
+                        Text(progress.message).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     let openQuestions = (session.customerQuestions ?? []).filter { !["answered", "deferred"].contains($0.status) }
                     if !openQuestions.isEmpty {
                         Button("\(openQuestions.count) unanswered question\(openQuestions.count == 1 ? "" : "s")") { researchSection = openQuestions.allSatisfy { $0.kind == "competition" } ? "competition" : "answers"; workspaceTab = "research" }
                             .font(.caption).buttonStyle(.plain).foregroundStyle(SalesPilotStyle.accent)
+                    }
+                    if live.listening, session.coachProgress?.state == "failed" {
+                        Button("Retry") {
+                            if let question = (session.customerQuestions ?? []).last(where: { $0.status == "needs_confirmation" }) { LiveCoach.shared.retryRequest(id: question.id) }
+                            else { LiveCoach.shared.retryRequest() }
+                        }.font(.caption).help("Retry without marking the customer question answered.")
                     }
                     if let cue = session.nextq.first {
                         Text(cue.q).font(.system(size: 19, weight: .medium, design: .rounded))

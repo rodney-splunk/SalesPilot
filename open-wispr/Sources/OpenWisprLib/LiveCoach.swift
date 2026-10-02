@@ -204,6 +204,14 @@ final class LiveCoach {
         if let encoded = line.data(using: .utf8) { try? input.write(contentsOf: encoded) }
     }
 
+    func retryRequest(id: Int? = nil) {
+        guard let input = stdin else { return }
+        var command: [String: Any] = ["cmd": "retry"]
+        if let id { command["id"] = id }
+        guard let data = try? JSONSerialization.data(withJSONObject: command) else { return }
+        try? input.write(contentsOf: data + Data([10]))
+    }
+
     func resolveQuestion(id: Int, status: String) {
         guard ["answered", "deferred", "open"].contains(status), let input = stdin,
               let data = try? JSONSerialization.data(withJSONObject: ["cmd": "question", "id": id, "status": status]),

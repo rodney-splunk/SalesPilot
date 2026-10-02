@@ -42,7 +42,7 @@ Use fictional data and an explicitly described pilot. A curated example demonstr
 
 | ID / priority | Deliverable and state | Acceptance criteria | Dependencies / role |
 | --- | --- | --- | --- |
-| DEMO-01 P0 | Two distinct mode examples — Planned | Same customer asks for an immediate demo. Flexible example explores a mixed/demo agenda; Discovery first redirects naturally and asks a contextual discovery question. Each clearly labeled fictional; switching modes updates transcript and Next Move consistently; exit returns to actual state; no capture or hosted request | Native UI + coaching |
+| DEMO-01 P0 | Two distinct mode examples — Implemented; native acceptance passed | Verified October 2: both fictional examples show the same immediate demo request with different transcript/Next Move cues; 13 native checks pass. Flexible example explores a mixed/demo agenda; Discovery first redirects naturally and asks a contextual discovery question. Each clearly labeled fictional; switching modes updates transcript and Next Move consistently; exit returns to actual state; no capture or hosted request | Native UI + coaching |
 | DEMO-02 P0 | Guided demonstration path — Planned | Repeatable 6–8 minute story: prep → mode → transcript/cue → framework evidence → notes/correction → sourced answer → competition → recap. No empty/stale panel, invented claims or runtime setup needed mid-demo; presenter can reset in one action | DEMO-01; product + UI |
 | UX-01 P0 | End-to-end visual polish — Validation open | Check both modes at default/minimum window sizes and light/dark appearance; no clipped controls, inaccessible source links or confusing statuses. Compact/workspace switching keeps active state; More contains secondary controls; meaningful empty/loading/error states | Native UI + QA |
 | DEMO-03 P0 | Rehearsal on presentation Mac — Planned | Two complete rehearsals on the final build, one network-connected and one with network unavailable. Document version/commit, prerequisites, steps and results; demo does not depend on a last-minute login. No production call disturbed | DEMO-02, UX-01; presenter + QA |
@@ -123,3 +123,14 @@ A presentation can use verified fictional examples while audio certification rem
 - Platform/security: DEV-02, GOV-04 and scoped review intake.
 
 Use [Contributing](../CONTRIBUTING.md), [README](../README.md), [Privacy boundaries](PRIVACY.md) and [presentation runbook](PRESENTATION.md). Create/claim an issue before parallel work, and coordinate shared modules such as `serve.mjs`, `ReviewView.swift` and `core.mjs` to avoid incompatible changes.
+
+
+## October 2 polish implementation and evidence
+
+- DEMO-01: two mode-specific fictional examples implemented. Flexible conversation asks which demo workflow/success criteria matter; Discovery first redirects today toward discovery and a tailored next step. Both use the same customer request, label their mode and match transcript/Next Move. Example host turns consistently use Rodney White. No invented agreed next steps are included.
+- COACH-02 / ANSWER-01: explicit question-search retries retain the original question ID and do not mark it delivered. Resolved questions cannot be retried; ambiguous/seller attribution is excluded. Stop cancels pending search and blocks retry/late publication after finalization.
+- UX-01: progress messages are visible rather than tooltip-only; Searching docs, Answer ready, Needs confirmation and Request failed are distinct. Retry appears for failed coaching and unconfirmed answer searches. Missing evidence is not labeled a transport failure. Idle workspaces do not show an active-call audio warning.
+- Synthetic verification: 18 selected regression suites passed, plus product-context, question-continuity, duplicate-cleanup and audio-activity checks. New outage/retry/stop replay passed. Native checks expanded to 13/13 for both examples and existing state/context/consent behavior.
+- Still open: full presentation rehearsal, natural audio attribution/overlap acceptance, full-hour repaired recap finalization, production latency and every-vendor live acceptance. These changes do not close those gates.
+
+Installed UI acceptance: both modes visually reviewed; mode switch updates the fictional transcript and Next Move; Coach opens Research → Competition; Exit example restores the actual 0-turn workspace. Idle warning is absent. Installed binary SHA-256: `8957730cc942bdf05db657498f9e6bf244e352b258c4c6b43b61800671155d33`. No actual call was captured for these checks.

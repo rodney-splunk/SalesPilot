@@ -9,7 +9,7 @@ Planning window: October 5–9, 2026; exact presentation day not yet provided. O
 3. **Coach and framework (2m):** customer workflow/pain, natural follow-up, earlier context, evidence for partial/completed methodology; open its transcript evidence.
 4. **Facts and answers (1m):** notes retain firewall/source/quantity and correction. Show a sourced product answer and an unanswered question; generated is not delivered.
 5. **Competitive question (1m):** Sumo Logic example, both vendors' sources, Core-first positioning and neutral fit question. Coach arrow opens Research → Competition. Internal enablement links are separate.
-6. **Mode contrast (1m):** same immediate demo request, two appropriate responses. Requires DEMO-01; the current shared example does not fully demonstrate this contrast yet.
+6. **Mode contrast (1m):** same immediate demo request, two appropriate responses. DEMO-01 is implemented: choose each mode under More → Call mode, then Show example. Both end with the same demo request and a distinct contextual Next Move.
 7. **Close (1m):** reviewable recap, limitations, next measured pilot gates and leadership decisions needed. Explicitly distinguish fictional example from live provider/audio evidence.
 
 ## Rehearsal checklist

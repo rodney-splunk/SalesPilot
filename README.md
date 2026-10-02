@@ -76,10 +76,10 @@ Only approved Cisco authentication and inference hosts are enabled. Hosted model
 6. **Coach** shows Next Move and methodology coverage. Click a coverage point for its supporting transcript and remaining gap. The transcript and compact window support following the conversation; hiding the transcript does not stop capture.
 7. **Notes** gathers customer statements with evidence. Review corrections and assumptions before using them.
 8. **Research** nests **Answers**, **Competition** and **Opportunities**. A competitive-answer arrow on Coach opens Competition directly. Competitor mentions produce neutral validation prompts; comparisons require readable evidence for both sides. Internal enablement links require your own Cisco access. Splunk Core is the initial positioning baseline; premium applications require an expressed need.
-9. Generated answers stay unresolved until delivered/marked answered or explicitly deferred. “Needs confirmation” means the evidence is insufficient; do not present it as verified.
+9. Generated answers stay unresolved until delivered/marked answered or explicitly deferred. Unconfirmed answers offer Retry search during a live call; retry preserves the same question. Request failed differs from insufficient evidence. “Needs confirmation” means the evidence is insufficient; do not present it as verified.
 10. End capture when finished. Review the recap and unresolved questions; **More → Past calls** opens previous local calls. Exports are deliberate local actions, not automatic email/CRM sends.
 
-Use **More → Show example** to demonstrate the UI without recording; **Exit example** returns to the actual workspace. **More → Quick guide** reopens onboarding. Privacy & local data provides inventory, age review and archive holds; there is no approved automatic retention period baked in.
+Use **More → Show example** to demonstrate the UI without recording; each mode has a distinct response to the same immediate demo request. Switch via More → Call mode to compare them; **Exit example** returns to the actual workspace. **More → Quick guide** reopens onboarding. Privacy & local data provides inventory, age review and archive holds; there is no approved automatic retention period baked in.
 
 ## Architecture
 

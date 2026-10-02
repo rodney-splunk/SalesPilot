@@ -5,9 +5,9 @@ struct LiveAnswerCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("LIVE ANSWER", systemImage: "books.vertical").font(.system(size: 11, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
+                Label(answer.category == "competition" ? "COMPETITIVE ANSWER" : "LIVE ANSWER", systemImage: "books.vertical").font(.system(size: 11, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                 Spacer()
-                Text(answer.status == "searching" ? "Searching" : answer.status == "grounded" ? "Sources found" : "Needs confirmation")
+                Text(answer.requestFailed == true ? "Request failed" : answer.status == "searching" ? "Searching docs" : answer.status == "grounded" ? "Sources found" : "Needs confirmation")
                     .font(.system(size: 10, weight: .medium)).foregroundStyle(answer.status == "unverified" ? Color.orange : Color.secondary)
             }
             Text(answer.q).font(.system(size: 14, weight: .semibold)).textSelection(.enabled)
@@ -48,6 +48,7 @@ struct LiveAnswersView: View {
                                             Button("Reopen") { LiveCoach.shared.resolveQuestion(id: question.id, status: "open") }
                                         } else {
                                             Button("Answered on call") { LiveCoach.shared.resolveQuestion(id: question.id, status: "answered") }
+                                            if question.status == "needs_confirmation" { Button("Retry search") { LiveCoach.shared.retryRequest(id: question.id) } }
                                             Button("Defer to follow-up") { LiveCoach.shared.resolveQuestion(id: question.id, status: "deferred") }
                                         }
                                     }.font(.caption)

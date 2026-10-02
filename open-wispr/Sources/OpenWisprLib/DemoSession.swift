@@ -2,24 +2,31 @@ import Foundation
 
 /// Fictional, local presentation data. Never replaces a saved call.
 enum DemoSession {
-    static func make() -> SessionData {
+    static func make(purpose: String? = nil) -> SessionData {
         var session = try! JSONDecoder().decode(SessionData.self, from: Data(json.utf8))
         session.framework = Coaching.selectedName
         session.coverage = Coaching.selectedElements.enumerated().map { CovData(name: $0.element, status: $0.offset < 3 ? "done" : "partial") }
-        session.callPurpose = UserDefaults.standard.string(forKey: "callPurpose") ?? "standard"
+        session.callPurpose = purpose ?? UserDefaults.standard.string(forKey: "callPurpose") ?? "standard"
         if let previous = session.liveAnswer { session.answerHistory = (session.answerHistory ?? []) + [previous] }
         let question = "How does Splunk differ from Sumo Logic for our logging workflow?"
         session.turns.append(TurnData(me: false, who: "Dana Reyes", time: "8:45", text: question, coachTarget: nil, coachQ: nil, side: "customer"))
         session.liveAnswer = LiveAnswer(q: question, answer: "Both provide log analytics. Splunk offers a managed Cloud Platform and self-managed Enterprise deployments. Sumo Logic documents a cloud analytics platform with its Search Query Language. Compare the collection, retention and investigation workflows that matter to your team.", sources: ["https://www.splunk.com/en_us/products/splunk-cloud-platform.html", "https://www.splunk.com/en_us/products/splunk-enterprise.html", "https://www.sumologic.com/help/docs/get-started/"], status: "grounded", sourceTitles: ["https://www.splunk.com/en_us/products/splunk-cloud-platform.html": "Splunk Cloud Platform", "https://www.splunk.com/en_us/products/splunk-enterprise.html": "Splunk Enterprise", "https://www.sumologic.com/help/docs/get-started/": "Sumo Logic documentation"], category: "competition")
         session.competition = [CompetitiveSignal(id: "sumo", name: "Sumo Logic", quote: question, speaker: "Dana Reyes", probe: "How do your analysts search older logs during an investigation?", themes: ["Collection and retention", "Investigation workflow", "Comparable licensing scope"], resources: [CompetitiveResource(title: "Sumo Logic battlecards · Klue", url: "https://v2.app.klue.com/profile/88593/battlecard/view", scope: "Internal enablement · Cisco sign-in required", verifiedAt: "2026-10-02")])]
-        if session.callPurpose == "discovery" {
-            let question = "When firewall data takes six hours to arrive, what does that mean for an urgent investigation?"
-            session.nextq = [NextQData(q: question, tag: "Implication", reason: "Understand the consequence of the current workflow before planning a tailored demo.")]
-            for index in session.turns.indices {
-                if session.turns[index].text == "Let me show you the correlated search view." { session.turns[index].text = "Walk me through how your team correlates those logs today." }
-                if session.turns[index].coachQ?.contains("just showed") == true { session.turns[index].coachQ = question }
-            }
+        let discovery = session.callPurpose == "discovery"
+        let response = discovery
+            ? "Let's use today to understand your investigation workflow so we can tailor a useful demo as a next step. Where does the six-hour wait create the biggest problem for your team?"
+            : "Before we walk through a demo, which part of the firewall investigation would you most want to see—and how would you judge whether it improves your current process?"
+        session.title = discovery ? "Discovery first · Buttercup Enterprises" : "Flexible conversation · Buttercup Enterprises"
+        session.subtitle = "Fictional example · " + (discovery ? "Discovery first" : "Flexible conversation")
+        for index in session.turns.indices {
+            if session.turns[index].me { session.turns[index].who = "Rodney White" }
+            if discovery && session.turns[index].text == "Let me show you the correlated search view." { session.turns[index].text = "Walk me through how your team correlates those logs today." }
         }
+        session.turns.append(TurnData(me: false, who: "Dana Reyes", time: "9:10", text: "Could you give us a firewall investigation demo today?", coachTarget: discovery ? "Discovery focus" : "Demo success criteria", coachQ: response, side: "customer"))
+        session.nextq = [NextQData(q: response, tag: discovery ? "Discovery focus" : "Demo success criteria", reason: discovery ? "Understand the need today; shape a tailored demo for a possible next step." : "A mixed agenda can include a demo; first establish what the customer needs to see.")]
+        session.coachProgress = CoachProgress(state: "listening", message: "Fictional example. No call is being recorded or processed.")
+        session.recap = "Fictional scenario: Dana's team described delayed firewall logs, investigation impact and a corrected volume of 46 GB. " + (discovery ? "Clarify the current workflow and success criteria before proposing a tailored follow-up demo." : "Clarify what the customer wants to evaluate in a demo against the current investigation process.")
+        session.nextSteps = []
         return session
     }
     private static let json = #"""

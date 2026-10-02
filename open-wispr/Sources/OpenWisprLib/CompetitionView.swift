@@ -56,7 +56,7 @@ struct CompetitionView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(question.q).font(.callout); Text(question.status.replacingOccurrences(of: "_", with: " ").capitalized).font(.caption).foregroundStyle(.secondary)
                         if canResolve && ["answered", "deferred"].contains(question.status) { Button("Reopen") { LiveCoach.shared.resolveQuestion(id: question.id, status: "open") }.font(.caption) }
-                        else if canResolve { HStack { Button("Answered on call") { LiveCoach.shared.resolveQuestion(id: question.id, status: "answered") }; Button("Defer to follow-up") { LiveCoach.shared.resolveQuestion(id: question.id, status: "deferred") } }.font(.caption) }
+                        else if canResolve { HStack { Button("Answered on call") { LiveCoach.shared.resolveQuestion(id: question.id, status: "answered") }; if question.status == "needs_confirmation" { Button("Retry search") { LiveCoach.shared.retryRequest(id: question.id) } }; Button("Defer to follow-up") { LiveCoach.shared.resolveQuestion(id: question.id, status: "deferred") } }.font(.caption) }
                     }.padding(14).background(Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
                 }
                 if signals.isEmpty && competitiveAnswers.isEmpty && current?.category != "competition" {
