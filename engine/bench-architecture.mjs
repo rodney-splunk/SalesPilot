@@ -1,0 +1,12 @@
+// Synthetic-only comparison. Hosted runs refuse to substitute a fallback model.
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {PACKS} from './packs.mjs';
+import {fastTier,MODELS,PROVIDER} from './core.mjs';
+import {performanceSnapshot} from './performance.mjs';
+const scenarios=[
+ {id:'technical-to-business',target:'implication',transcript:"me: Where does investigation slow down today?\ncust: Our analysts wait six hours for the network team to send firewall logs.\ncust: That delay means we miss our triage SLA."},
+ {id:'demo-comparison',target:'need_payoff',transcript:"cust: Our analysts wait six hours for firewall logs.\ncust: My team works weekends catching up instead of doing engineering work.\nme: I showed you how the investigation view brings those logs together.\ncust: That would let us investigate without waiting on another team."},
+ {id:'retain-early-context',target:'implication',transcript:"cust: We use Palo Alto firewalls and ingest 45 gigabytes of logs per day.\ncust: Our SIEM generates too many false positives and important incidents get buried.\nme: Let me show you the detection view and search workflow.\ncust: We still have to check three consoles and my analysts work weekends to keep up."},
+];
+const rows=[];for(const item of scenarios){const started=performance.now();try{const label=PACKS.spin.elements.find(e=>e.id===item.target).label;const raw=await fastTier(PACKS.spin,item.transcript,`Ask one natural question that advances ${label}. Explore technical, business or personal impact only as earned. Compare the demonstration to their current workflow when relevant.`,null,{remoteOnly:PROVIDER==='circuit',evidenceTranscript:item.transcript.split('\n').filter(t=>t.startsWith('cust:')).join('\n')});const result=JSON.parse(raw);const question=result.next_questions?.[0];rows.push({scenario:item.id,ms:Math.round(performance.now()-started),question:question?.text||null,target:question?.targets||null,onTarget:question?.targets===item.target,coverage:result.coverage});}catch(error){rows.push({scenario:item.id,ms:Math.round(performance.now()-started),error:error.message.slice(0,120)});}console.log(JSON.stringify(rows.at(-1)),true);}
+const report={provider:PROVIDER,model:PROVIDER==='circuit'?MODELS.circuit.fast:MODELS.ollama.fast,syntheticOnly:true,rows,performance:performanceSnapshot()};const dir=new URL('../previews/',import.meta.url);mkdirSync(dir,{recursive:true});writeFileSync(new URL(`architecture-benchmark-${report.model.replace(/[^a-z0-9.-]/gi,'_')}.json`,dir),JSON.stringify(report,null,2));

@@ -1,0 +1,11 @@
+import {spawn} from 'node:child_process';import assert from 'node:assert/strict';import {mkdtempSync,readFileSync,rmSync} from 'node:fs';import {join} from 'node:path';import {tmpdir} from 'node:os';
+const dir=mkdtempSync(join(tmpdir(),'salespilot-demo-')),file=join(dir,'session.json');
+const p=spawn(process.execPath,['--import',new URL('../tests/engine/mock-checkpoint.mjs',import.meta.url).pathname,new URL('./serve.mjs',import.meta.url).pathname],{env:{...process.env,SALESPILOT_LOCAL_ONLY:'1',SALESPILOT_OFFLINE:'1',COACH_LOCAL:'1',SESSION_FILE:file,PREP_FILE:join(dir,'absent'),CORRECT_MIN_INTERVAL_MS:'-1',COACH_DEBUG:'1'},stdio:['pipe','ignore','pipe']});
+let errors='';p.stderr.on('data',d=>errors+=d);const pause=ms=>new Promise(r=>setTimeout(r,ms));const read=()=>{try{return JSON.parse(readFileSync(file))}catch{return null}};async function until(fn){for(let i=0;i<160;i++){const s=read();if(s&&fn(s))return s;await pause(30)}throw Error(errors+'\n'+JSON.stringify(read()?.turns?.map(t=>({side:t.side,intent:t.coachIntent,checkpoint:t.coachCheckpoint,words:t.text.split(/\s+/).length}))))}
+try{
+ await until(()=>true);
+ const turns=[['customer','Right now we have four separate consoles and the team checks each one by hand every morning.'],['you',('Let me show you this dashboard and search bar. We can see failed logins across devices and drill down to the raw events. ').repeat(4)],['customer','Okay.'],['you',('If we click this dashboard we can filter firewall events, compare failed logins and investigate the correlated network information in one place. ').repeat(4)]];
+ for(const [speaker,text] of turns){const n=read().turns.length;p.stdin.write(JSON.stringify({speaker,text})+'\n');await until(s=>s.turns.length>n)}
+ const s=await until(s=>s.turns.at(-1)?.coachQ);assert.match(s.turns.at(-1).coachQ,/compare.*four separate consoles/i);assert.ok(s.nextq.some(q=>q.q===s.turns.at(-1).coachQ));assert.equal(s.turns.at(-1).side,'seller');assert.ok(s.coverage.every(c=>c.status!=='done'),'seller narration cannot confirm customer coverage');
+ console.log('PASS presenter checkpoint appears in transcript and Next Move without confirming customer evidence');
+}finally{p.kill('SIGTERM');rmSync(dir,{recursive:true,force:true});}

@@ -1,0 +1,3 @@
+import {readFileSync} from 'node:fs';
+const session=JSON.parse(readFileSync(process.argv[2],'utf8'));const targets={transcriptToCue:4000,questionToSourcedAnswer:10000};
+const stages=session.performance||{};console.log(JSON.stringify({scope:process.argv.includes('--mock')?'Synthetic transport; does not certify production network latency':'Observed finalized turns on this Mac',stages:Object.fromEntries(Object.entries(stages).map(([name,s])=>[name,{...s,failures:Object.entries(s.outcomes||{}).filter(([k])=>['error','timeout'].includes(k)).reduce((n,[,v])=>n+v,0),targetP95Ms:targets[name]||null,withinTarget:targets[name]?s.p95Ms<=targets[name]:null}]))},null,2));

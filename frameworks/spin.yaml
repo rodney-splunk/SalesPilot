@@ -1,0 +1,23 @@
+name: SPIN
+description: Discovery framework — Situation, Problem, Implication, Need-payoff. Goals, not scripts.
+elements:
+  - id: situation
+    label: Situation
+    covered_when: Current state / context is established (tools, team, process, scale).
+    seed_questions:
+      - "Walk me through how you handle this today."
+  - id: problem
+    label: Problem
+    covered_when: A specific difficulty or dissatisfaction is surfaced.
+    seed_questions:
+      - "Where does that process break down?"
+  - id: implication
+    label: Implication
+    covered_when: The cost / impact / risk of the problem is quantified or felt.
+    seed_questions:
+      - "What happens if that isn't fixed before <event>?"
+  - id: need_payoff
+    label: Need-payoff
+    covered_when: The customer articulates the value of solving it.
+    seed_questions:
+      - "If you could <capability>, what would that unlock for the team?"

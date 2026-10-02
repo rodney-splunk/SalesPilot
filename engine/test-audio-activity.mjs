@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {AudioActivity} from './audio-activity.mjs';
+const state=new AudioActivity(), now=Date.now()/1000;
+const event=(speaker,active,at,voicedAt=at)=>({speaker,active,at,voicedAt});
+assert.equal(state.update(event('customer',true,now),now),true);
+assert.equal(state.blocked({endedAt:now},now),true);
+assert.equal(state.blocked(undefined,now+.7),true,'first speech must be transcribed before opening cues return');
+assert.equal(state.update(event('customer',false,now+.7,now),now+.7),true);
+assert.equal(state.blocked({endedAt:now-.5},now+.7),true,'silence cannot publish before newer speech is transcribed');
+assert.equal(state.blocked({endedAt:now},now+.7),false);
+assert.equal(state.update(event('customer',true,now-.1),now+.7),false,'late activity cannot overwrite newer state');
+assert.equal(state.update(event('you',true,now+.8),now+.8),true);
+assert.equal(state.blocked({endedAt:now},now+.8),true,'either channel can hold coaching');
+assert.equal(state.blocked({endedAt:now+1},now+4),false,'lost heartbeat does not leave active flag stuck');
+assert.equal(state.update(event('invalid',true,now+1),now+1),false);
+assert.equal(state.update(event('you',true,now+20),now),false);
+assert.equal(state.update(event('you',true,now+1,now+10),now+1),false);
+console.log('PASS both-channel activity, pending transcription, event ordering, stale heartbeat and malformed-event guards');

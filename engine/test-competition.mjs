@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {competitors,competitiveRequest,competitiveSignals,competitiveSources,competitionReferences,validateCompetitiveAnswer} from './competition.mjs';
+import {groundedAnswer} from './answer-policy.mjs';
+assert.equal(competitiveRequest('What is the difference between you and Sumo Logic?').category,'competition');
+assert.equal(competitiveRequest('Which one is cheaper?',[{text:'We use Sumo Logic and are evaluating Splunk.'}]).competitors[0],'sumo');
+assert.equal(competitiveRequest('How do Splunk Cloud and Splunk Enterprise differ?',[{text:'We use Sumo Logic.'}]),null);
+assert.equal(competitiveRequest('We use Sumo Logic for log analysis.'),null);
+assert.equal(competitors('sumo wrestling and an elastic band').length,0);
+const turns=[{id:1,text:'We use Sumo Logic.',who:'Jesse',side:'customer'},{id:2,text:'Datadog is another option.',side:'seller'},{id:3,text:'Elastic is an option.',side:'customer',speakerStatus:'mixed'}];
+assert.deepEqual(competitiveSignals(turns).map(x=>x.id),['sumo']);
+let requests=0;globalThis.fetch=async url=>{requests++;assert.ok(!String(url).includes('Jesse'));return new Response('<main>'+('Splunk Core supports log search. Sumo Logic supports cloud log analytics and a search query language. ').repeat(3)+'</main>',{headers:{'content-type':'text/html'}})};
+const sources=await competitiveSources('Splunk Core versus Sumo Logic');assert.equal(sources.length,4);
+const refs=competitionReferences([],sources);const good=groundedAnswer(JSON.stringify({answer:'Splunk Core supports log search; Sumo Logic supports cloud log analytics and a search query language.',sourceIds:['S1','S3'],supported:true}),refs,'Compare Sumo Logic and Splunk');assert.ok(validateCompetitiveAnswer(good,refs,'Sumo Logic'));
+assert.equal(validateCompetitiveAnswer({...good,sources:[refs[0].source]},refs,'Sumo Logic'),null);
+assert.equal(validateCompetitiveAnswer({...good,answer:'Splunk is better than Sumo Logic.'},refs,'Sumo Logic'),null);
+process.env.SALESPILOT_LOCAL_ONLY='1';const count=requests;assert.deepEqual(await competitiveSources('Sumo Logic pricing'),[]);assert.equal(requests,count);
+console.log('PASS competitive detection/context, customer-only signals, both-vendor evidence, superiority rejection and local-only egress');

@@ -1,0 +1,43 @@
+name: MEDDPICC
+description: Enterprise qualification framework. Goals to uncover — NOT scripts.
+elements:
+  - id: metrics
+    label: Metrics
+    covered_when: A quantified business impact or economic value is established (cost, risk, time, revenue).
+    seed_questions:
+      - "What does that problem cost you today — in dollars, hours, or risk?"
+  - id: economic_buyer
+    label: Economic Buyer
+    covered_when: The person who controls budget / can say final yes is identified and ideally engaged.
+    seed_questions:
+      - "Who ultimately signs off on an investment like this?"
+  - id: decision_criteria
+    label: Decision Criteria
+    covered_when: The customer's explicit criteria for choosing a solution are known.
+    seed_questions:
+      - "What will this be measured against when you evaluate options?"
+  - id: decision_process
+    label: Decision Process
+    covered_when: The steps, stakeholders, and timeline to a decision are mapped.
+    seed_questions:
+      - "Walk me through how a decision like this actually gets made here."
+  - id: paper_process
+    label: Paper Process
+    covered_when: Procurement / legal / security review steps and timing are understood.
+    seed_questions:
+      - "Once you've chosen, what does it take to get it signed — procurement, security, legal?"
+  - id: identify_pain
+    label: Identify Pain
+    covered_when: A specific, felt business pain (not a feature wish) is surfaced.
+    seed_questions:
+      - "What's the trigger that made this a priority now?"
+  - id: champion
+    label: Champion
+    covered_when: An internal advocate with influence who sells on your behalf is identified.
+    seed_questions:
+      - "Who internally is most motivated to see this solved?"
+  - id: competition
+    label: Competition
+    covered_when: Alternatives (incumbents, other vendors, do-nothing) are known.
+    seed_questions:
+      - "What else are you weighing — including doing nothing?"

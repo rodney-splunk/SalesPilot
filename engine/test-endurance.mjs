@@ -1,0 +1,13 @@
+// Wall-clock endurance with isolated synthetic data and mocked provider. No capture/devices.
+import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {mkdtempSync,readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
+const seconds=Number(process.env.ENDURANCE_SECONDS||3600),period=Number(process.env.ENDURANCE_PERIOD||10);const dir=mkdtempSync(join(tmpdir(),'salespilot-endurance-')),file=join(dir,'session.json');
+const pause=ms=>new Promise(r=>setTimeout(r,ms));let p,errors='';const read=()=>JSON.parse(readFileSync(file));
+function launch(){p=spawn(process.execPath,['--import',new URL('../tests/engine/mock-model.mjs',import.meta.url).pathname,new URL('./serve.mjs',import.meta.url).pathname],{env:{...process.env,SESSION_FILE:file,PREP_FILE:join(dir,'absent'),SALESPILOT_OFFLINE:'1',COACH_LOCAL:'1',CORRECT_MIN_INTERVAL_MS:'-1'},stdio:['pipe','ignore','pipe']});p.stderr.on('data',d=>errors=(errors+d).slice(-8000));}
+async function until(fn){for(let i=0;i<100;i++){try{if(fn(read()))return;}catch{}await pause(50);}throw Error('Engine timeout: '+errors);}
+const start=Date.now();let total=0;const snapshots=[];launch();
+try{
+ await until(()=>true);
+ while(Date.now()-start<seconds*1000){const before=read().turns.length;const now=Date.now()/1000;p.stdin.write(JSON.stringify({speaker:total%4===0?'you':'customer',text:total%4===0?'Let us follow that workflow.':`Our analysts spend ${total+1} minutes collecting firewall logs for this investigation.`,startedAt:now-5,endedAt:now-.5,finalizedAt:now})+'\n');await until(s=>s.turns.length===before+1);total++;if(total%6===0){const s=read();assert.ok(s.turns.length===total);snapshots.push({elapsedSeconds:Math.round((Date.now()-start)/1000),turns:s.turns.length,performance:s.performance});}await pause(Math.min(period*1000,Math.max(0,seconds*1000-(Date.now()-start))));}
+ p.stdin.write(JSON.stringify({cmd:'recap'})+'\n');await until(s=>!!s.recap);assert.ok(existsSync(join(dir,'history')));const s=read();assert.equal(s.turns.length,total);
+ const report={wallClockSeconds:(Date.now()-start)/1000,totalTurns:total,performance:s.performance,snapshots,provider:'mocked; no production model latency claim',sessionDirectory:dir};writeFileSync(process.env.ENDURANCE_REPORT||join(dir,'report.json'),JSON.stringify(report,null,2));console.log(`PASS ${report.wallClockSeconds.toFixed(1)}-second wall-clock endurance, ${total} turns, intact recap/history and bounded operational metrics`);
+}finally{p.kill('SIGTERM');await new Promise(r=>p.exitCode!==null?r():p.once('exit',r));}

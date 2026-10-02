@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';import {attributedFragments} from './speaker-alignment.mjs';
+const words=[{word:'Hello.',start:0,end:.5},{word:' My turn.',start:2,end:2.5},{word:' Both.',start:3,end:3.5}];const windows=[{start:0,end:1,cluster:1},{start:2,end:4,cluster:2},{start:3,end:4,cluster:1}];
+assert.deepEqual(attributedFragments(words,windows).map(f=>f.cluster),[1,2,null]);assert.deepEqual(attributedFragments(undefined,windows),[]);assert.deepEqual(attributedFragments([{word:'Invalid',start:-1,end:0}],windows),[]);assert.equal(attributedFragments([{word:'Tail',start:8,end:9}],windows)[0].cluster,null);assert.equal(attributedFragments([{word:'Boundary',start:.8,end:1.8}],windows)[0].cluster,null);assert.equal(attributedFragments([{word:'Uncertain',start:0,end:1}],[{start:0,end:2,cluster:null}])[0].cluster,null);console.log('PASS timestamp-based speaker fragments, conflicts, missing times, invalid ranges, tails and boundary guards');
+
+assert.deepEqual(attributedFragments(words,windows,'A different transcript'),[],'mismatched timestamps must never drop or redistribute words');

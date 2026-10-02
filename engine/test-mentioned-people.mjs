@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {mentionedPeople} from './mentioned-people.mjs';
+const extract=text=>mentionedPeople([{id:1,text,who:'Rodney'}]);
+assert.equal(extract('Hunter did your last demo.')[0].inferred,true);
+assert.equal(extract('Hunter did your last demo.')[0].organization,'');
+assert.equal(extract('Jennifer is the Splunk RSM.')[0].organization,'Splunk');
+assert.equal(extract('Jennifer is the Splunk RSM.')[0].attendance,'unconfirmed');
+assert.equal(extract('He did your last demo.').length,0);
+assert.equal(extract('For example, Hunter did your last demo.').length,0);
+assert.equal(extract("Hi, I'm Hunter from Splunk.").length,0);
+assert.equal(mentionedPeople([{text:'Hunter did your last demo.'}],[{name:'Hunter'}]).length,0);
+assert.equal(mentionedPeople([{text:'Hunter did your last demo.'},{text:'Hunter is the Splunk SE.'}])[0].inferred,false);
+assert.equal(extract('Jennifer is the RSM from Splunk.')[0].role,'RSM');
+console.log('10/10 mentioned-person checks passed');

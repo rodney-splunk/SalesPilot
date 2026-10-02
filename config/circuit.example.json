@@ -1,0 +1,7 @@
+{
+  "credential_store": "macos-keychain",
+  "client_id": "REPLACE_WITH_YOUR_APPROVED_CLIENT_ID",
+  "token_url": "https://id.cisco.com/oauth2/default/v1/token",
+  "inference_url": "https://chat-ai.cisco.com/REPLACE_WITH_APPROVED_BASE_PATH",
+  "api_version": "REPLACE_WITH_APPROVED_API_VERSION"
+}

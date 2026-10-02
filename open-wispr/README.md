@@ -1,0 +1,1 @@
+Native Swift package for SalesPilot. See the root README for supported setup. This package derives from open-wispr; its MIT notice is preserved in LICENSE. SalesPilot adds optional Cisco-hosted text inference and public documentation retrieval.
