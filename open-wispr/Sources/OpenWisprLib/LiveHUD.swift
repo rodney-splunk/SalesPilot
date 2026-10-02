@@ -74,7 +74,7 @@ struct LiveHUDView: View {
                 .background(Color.green.opacity(0.16), in: RoundedRectangle(cornerRadius: 8))
             }
             VStack(alignment: .leading, spacing: 7) {
-                Label("NEXT MOVE", systemImage: "sparkle").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
+                Label("NEXT QUESTION", systemImage: "sparkle").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                 Text(state.nextQuestion ?? "Listen for their next thought.")
                     .font(.system(size: 17, weight: .medium, design: .rounded)).fixedSize(horizontal: false, vertical: true)
                 if let target = state.nextQuestionTarget { Text(target).font(.system(size: 10)).foregroundStyle(.secondary) }

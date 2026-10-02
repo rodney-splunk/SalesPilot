@@ -63,6 +63,9 @@ public enum WorkspacePreview {
         let start = Date()
         let result = try Transcriber(modelSize: model, language: "en", threads: 4).transcribeDetailed(audioURL: URL(fileURLWithPath: path))
         guard !result.0.isEmpty, !result.1.isEmpty, result.1.allSatisfy({ $0.valid }) else { throw NSError(domain: "SalesPilotVerify", code: 5, userInfo: [NSLocalizedDescriptionKey: "Actual local ASR did not return valid timed words"]) }
+        if let output = ProcessInfo.processInfo.environment["SALESPILOT_VERIFY_AUDIO_OUTPUT"] {
+            try result.0.write(toFile: output, atomically: true, encoding: .utf8)
+        }
         print("PASS actual local ASR: \(result.1.count) timed tokens, model \(model), \(Date().timeIntervalSince(start)) seconds; no audio device or network model used")
     }
 

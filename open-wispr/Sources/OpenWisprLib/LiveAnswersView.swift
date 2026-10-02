@@ -12,7 +12,7 @@ struct LiveAnswerCard: View {
             }
             Text(answer.q).font(.system(size: 14, weight: .semibold)).textSelection(.enabled)
             if answer.status == "searching" { ProgressView().controlSize(.small) }
-            Text(answer.answer).font(.system(size: 15)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text(answer.displayAnswer).font(.system(size: 15)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             ForEach(answer.sources ?? [], id: \.self) { source in
                 if let url = URL(string: source), url.scheme == "https" {
                     Link(destination: url) { Label(answer.sourceTitles?[source] ?? url.host ?? source, systemImage: "arrow.up.right") }.font(.system(size: 12))
@@ -41,7 +41,7 @@ struct LiveAnswersView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(question.q).font(.callout).textSelection(.enabled)
                                 Text(question.speaker + " · " + question.status.replacingOccurrences(of: "_", with: " ").capitalized).font(.caption).foregroundStyle(.secondary)
-                                if let answer = question.answer { Text(answer.answer).font(.callout).foregroundStyle(.secondary) }
+                                if question.status != "searching", let answer = question.answer { Text(answer.displayAnswer).font(.callout).foregroundStyle(.secondary) }
                                 if canResolve {
                                     HStack {
                                         if ["answered", "deferred"].contains(question.status) {
@@ -59,7 +59,7 @@ struct LiveAnswersView: View {
                 }
                 if let current { LiveAnswerCard(answer: current) }
                 ForEach(history.indices.reversed(), id: \.self) { i in
-                    if history[i].q != current?.q { LiveAnswerCard(answer: history[i]) }
+                    if !history[i].matchesQuestion(current) { LiveAnswerCard(answer: history[i]) }
                 }
                 if current == nil && history.isEmpty && questions.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {

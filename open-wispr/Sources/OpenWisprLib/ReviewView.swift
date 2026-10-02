@@ -20,11 +20,32 @@ struct VoiceFragment: Codable { var text: String; var who: String; var start: Do
 struct TurnData: Codable { var me: Bool; var who: String; var time: String; var text: String; var coachTarget: String?; var coachQ: String?; var startedAt: Double? = nil; var side: String? = nil; var rawText: String? = nil; var speakerStatus: String? = nil; var voiceFragments: [VoiceFragment]? = nil }
 struct CoachProgress: Codable { var state: String; var message: String; var questionId: Int? = nil }
 struct CustomerQuestion: Codable, Identifiable { var id: Int; var q: String; var speaker: String; var status: String; var kind: String; var turnIds: [Int]; var answer: LiveAnswer? = nil }
-struct CoverageDetail: Codable { var id: String; var name: String; var status: String; var quote: String?; var turnId: Int?; var speakerUnconfirmed: Bool; var criterion: String; var remaining: String }
+struct CoverageEvidenceRecord: Codable { var turnId: Int; var quote: String; var speakerUnconfirmed: Bool }
+struct CoverageDetail: Codable { var evidence: [CoverageEvidenceRecord]? = nil; var id: String; var name: String; var status: String; var quote: String?; var turnId: Int?; var speakerUnconfirmed: Bool; var criterion: String; var remaining: String }
 struct CovData: Codable { var name: String; var status: String }
-struct NextQData: Codable { var q: String; var tag: String; var reason: String? = nil }
+struct NextQData: Codable {
+    var q: String; var tag: String; var reason: String? = nil
+    var displayQuestion: String {
+        guard ["A sourced answer is ready", "Searching documentation for:", "Needs confirmation:", "Unanswered:"].contains(where: { q.hasPrefix($0) }) else { return q }
+        // Older archived calls stored answer status in the cue slot. Keep status in Research.
+        if q.localizedCaseInsensitiveContains("ingest") { return "Which sources would you need to bring in, and where does collection get difficult today?" }
+        if q.localizedCaseInsensitiveContains("retention") { return "How long do you need that data available, and what investigations depend on it?" }
+        if q.localizedCaseInsensitiveContains("Datadog") { return "Where do you need to connect operational signals with a broader log investigation?" }
+        return "Which part of that question matters most to your current workflow?"
+    }
+}
 struct SpeakerData: Codable { var clusterId: Int; var label: String; var side: String; var organization: String? = nil }
-struct LiveAnswer: Codable { var q: String; var answer: String; var sources: [String]?; var status: String? = nil; var sourceTitles: [String: String]? = nil; var category: String? = nil; var requestFailed: Bool? = nil }
+struct LiveAnswer: Codable { var q: String; var answer: String; var sources: [String]?; var status: String? = nil; var sourceTitles: [String: String]? = nil; var category: String? = nil; var requestFailed: Bool? = nil; var questionId: Int? = nil
+    func matchesQuestion(_ other: LiveAnswer?) -> Bool {
+        guard let other else { return false }
+        if let questionId, let otherId = other.questionId { return questionId == otherId }
+        return q == other.q
+    }
+    var displayAnswer: String {
+        guard category == "competition" else { return answer }
+        return answer.replacingOccurrences(of: #"([.;])\s+(?=(?:Splunk|Datadog|Sumo Logic|Elastic|Microsoft Sentinel|Dynatrace|New Relic|IBM QRadar|Cribl|OpenSearch|Graylog|CrowdStrike)\b)"#, with: "$1\n\n", options: .regularExpression)
+    }
+}
 struct MentionedPerson: Codable { var name: String; var role: String; var organization: String; var inferred: Bool; var attendance: String; var quote: String; var who: String; var turnId: Int? }
 struct Person: Codable { var name: String; var role: String?; var decisionMaker: Bool?; var side: String? = nil; var organization: String? = nil; var nameEvidence: String? = nil }
 /// How you're DELIVERING, not what you're asking. These are the four things discovery is actually
@@ -502,7 +523,15 @@ struct ReviewView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text(item.name).font(.headline)
             Text(detail?.remaining ?? (session.turns.isEmpty ? "This point has not been discussed yet. Customer evidence will appear here during the call." : "No saved evidence breakdown is available for this older call. Review its transcript.")).font(.callout)
-            if let quote = detail?.quote {
+            if let evidence = detail?.evidence, !evidence.isEmpty {
+                ScrollView { VStack(alignment: .leading, spacing: 14) {
+                    ForEach(evidence, id: \.turnId) { record in
+                        Text(record.quote).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        if record.speakerUnconfirmed { Text("Speaker role unconfirmed").font(.caption).foregroundStyle(.orange) }
+                        Button("Show in transcript") { selectedEvidence = record.quote; showTranscript = true; selectedCoverage = nil }
+                    }
+                } }.frame(maxHeight: 360)
+            } else if let quote = detail?.quote {
                 Text(quote).font(.callout).textSelection(.enabled)
                 if detail?.speakerUnconfirmed == true { Text("Speaker role unconfirmed").font(.caption).foregroundStyle(.orange) }
                 Button("Show in transcript") { selectedEvidence = quote; showTranscript = true; selectedCoverage = nil }
@@ -570,7 +599,7 @@ struct ReviewView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(answer.category == "competition" ? (answer.status == "searching" ? "Checking competitive sources" : answer.status == "unverified" ? "Competitive answer needs confirmation" : "Competitive answer ready") : answer.status == "searching" ? "Searching for an answer" : answer.status == "unverified" ? "Answer needs confirmation" : "Answer ready").font(.system(size: 12, weight: .semibold))
                                 Text(answer.q).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-                                Text(answer.answer).font(.system(size: 13)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                                Text(answer.displayAnswer).font(.system(size: 13)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                                 Text(answer.status == "unverified" ? "Needs confirmation · open sources" : "Open answer and sources").font(.system(size: 10)).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -591,12 +620,12 @@ struct ReviewView: View {
                 }
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Label("NEXT MOVE", systemImage: "sparkle").font(.system(size: 11, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
+                        Label("NEXT QUESTION", systemImage: "sparkle").font(.system(size: 11, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                         Spacer()
                         Text(session.phase == "close" ? "Next steps" : "Discovery")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
-                    if live.listening, let progress = session.coachProgress {
+                    if live.listening, let progress = session.coachProgress, ["generating", "listening"].contains(progress.state) {
                         HStack(spacing: 7) {
                             if ["generating", "searching"].contains(progress.state) { ProgressView().controlSize(.mini) }
                             Text(progress.state == "generating" ? "Generating a follow-up" : progress.state == "searching" ? "Searching docs" : progress.state == "failed" ? "Request failed" : progress.state == "needs_confirmation" ? "Needs confirmation" : progress.state == "ready" ? "Answer ready" : "Listening")
@@ -616,7 +645,7 @@ struct ReviewView: View {
                         }.font(.caption).help("Retry without marking the customer question answered.")
                     }
                     if let cue = session.nextq.first {
-                        Text(cue.q).font(.system(size: 19, weight: .medium, design: .rounded))
+                        Text(cue.displayQuestion).font(.system(size: 19, weight: .medium, design: .rounded))
                             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                         Text(cue.reason.map { "Why: " + $0 } ?? ("Explore " + cue.tag)).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     } else {

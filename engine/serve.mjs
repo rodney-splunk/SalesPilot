@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {layeredComparison,comparisonFollowup,waitForAnswerContext} from './answer-context.mjs';
 import {callPurpose,purposeGuidance,discoverySafeCue} from './call-purpose.mjs';
 import {competitors,competitiveSources,competitiveSignals,competitionReferences,competitiveAnswerPrompt,validateCompetitiveAnswer} from './competition.mjs';
 const sessionPurpose=callPurpose(process.env.SALESPILOT_CALL_PURPOSE);
@@ -212,12 +213,15 @@ function delivery() {
     openingFramed,
   };
 }
+let answerContextChangedAt = 0;
+const callKnowledge = new Map(); // call-scoped retrieved evidence; no customer text sent to public pages
 let liveAnswer = null;
 const answerHistory = [];
 function saveAnswer(answer) {
   liveAnswer = answer;
-  coachProgress = {questionId:answer.questionId,state:answer.requestFailed ? 'failed' : answer.status==='grounded' ? 'ready' : 'needs_confirmation', message:answer.requestFailed ? 'Documentation request failed. Retry the search or defer the question.' : answer.status==='grounded' ? 'A sourced answer is ready. Review it before delivery.' : 'Evidence is insufficient. Keep the question open or defer it.'};
+  coachProgress = {questionId:answer.questionId,state:answer.requestFailed ? 'failed' : answer.status==='grounded' ? 'ready' : 'needs_confirmation', message:answer.requestFailed ? 'Documentation request failed. Retry the search or defer the question.' : answer.status==='grounded' ? 'Review the answer in Research; delivery still needs your confirmation.' : 'Evidence is insufficient. Keep the question open or defer it.'};
   if(answer.questionId)questionLedger.lookup(answer.questionId,answer.status === "grounded" ? "ready" : "needs_confirmation",answer);
+  if(answer.questionId){for(let i=answerHistory.length-1;i>=0;i--)if(answerHistory[i].questionId===answer.questionId)answerHistory.splice(i,1);}
   answerHistory.push({...answer, receivedAt: Date.now()});
 }
 let engineError = null;   // set when the model is unreachable, so the app can warn the rep
@@ -880,10 +884,9 @@ function writeSession() {
     coachProgress: questionLedger.open.some(q=>q.status==='searching') ? {state:'searching',message:'Searching documentation for a customer question.'} : coachProgress,
     nextq: (() => {
       const outstanding = questionLedger.open;
-      if(outstanding.length && !(turns.at(-1)?.coachQ && !turns.at(-1)?.questionId)){const latest=outstanding.at(-1);return [{q:latest.kind==='clarify' ? 'Clarify: '+(turns.find(t=>t.questionId===latest.id)?.coachQ||latest.q) : latest.status==='searching'?'Searching documentation for: '+latest.q:latest.status==='ready'?'A sourced answer is ready for: '+latest.q:latest.status==='needs_confirmation'?'Needs confirmation: '+latest.q:'Unanswered: '+latest.q,tag:'Customer question',reason:`${outstanding.length} unresolved. Review in Answers; mark answered or defer explicitly.`}];}
-      const latestCustomer = [...turns].reverse().find(t => !['seller','presenter'].includes(turnSide(t)));
-      if (latestCustomer?.coachIntent === 'answer' && !latestCustomer.questionId && liveAnswer) {
-        return [{q: liveAnswer.status === 'searching' ? 'Answer their product question first. Searching official documentation…' : liveAnswer.status === 'grounded' || liveAnswer.status === 'answered' ? 'Answer their product question using the sourced answer below.' : 'Resolve their product question first. Check the answer and source status below.',tag:'Answer',reason:'Do not pivot into discovery while their question is unresolved.'}];
+      if(outstanding.length && !(turns.at(-1)?.coachQ && !turns.at(-1)?.questionId)){
+        const latest=outstanding.at(-1);
+        return [{q:latest.kind==='clarify' ? (turns.find(t=>t.questionId===latest.id)?.coachQ||'Which source type do you mean?') : comparisonFollowup(latest.query),tag:'Customer question',reason:'Use this to clarify their criteria. Address the open question before moving to another topic; answers and sources are in Research.'}];
       }
       if (livePartialCue && !audioActivity.blocked(turns.at(-1))) return [{ q: livePartialCue, tag: "…" }];
       const ph = phase();
@@ -967,21 +970,33 @@ async function answerFromDocs(q, reqId, query = q, questionId = null) {
   const answerStarted = performance.now();
   const controller = new AbortController();
   activeAnswerController = controller;
-  const answerTimer = setTimeout(()=>controller.abort(new DOMException("Live answer deadline","TimeoutError")),20000);
+  let answerTimer = setTimeout(()=>controller.abort(new DOMException("Live answer deadline","TimeoutError")),20000);
   try {
     const lookupStarted = performance.now();
     const [hits, docs, pricing] = await abortable(Promise.all([search(query, 5), competitive ? competitiveSources(query) : searchSplunkDocs(query, 4), competitive ? Promise.resolve([]) : publicPricingSources(query)]),controller.signal);
     recordTiming("documentLookup",performance.now()-lookupStarted);
     const official = [...docs, ...pricing];
     if (reqId !== questionSeq) return;
-    const refs = competitive ? competitionReferences(hits,official) : references(hits, official, query);
+    let refs = competitive ? competitionReferences(hits,official) : references(hits, official, query);
+    const standby=callKnowledge.get(questionId);
+    if(competitive && standby){const records=new Map([...standby.refs,...refs].map(r=>[r.source+'\n'+r.text,r]));refs=[...records.values()].map((r,i)=>({...r,id:`S${i+1}`}));}
     const context = refs.map(r => `[${r.id}] ${r.title || r.source}\nSource: ${r.source}\n${r.text}`).join("\n\n");
-    const recent = turns.slice(-4).map(t => t.text).join("\n");
+    callKnowledge.set(questionId,{refs,query,retrievedAt:Date.now()});
+    clearTimeout(answerTimer); // customer speech is not a failed provider request
+    if (!await waitForAnswerContext({current:()=>reqId===questionSeq&&!callEnded,blocked:()=>audioActivity.blocked(turns.at(-1)),lastChanged:()=>answerContextChangedAt,signal:controller.signal}))return;
+    const recent = coachTranscript();
+    answerTimer=setTimeout(()=>controller.abort(new DOMException("Answer generation deadline","TimeoutError")),15000);
     const raw = context ? await serialLLM(() => callQuality(competitive ? competitiveAnswerPrompt : answerPrompt,
       `Recent conversation (context, not evidence):\n${recent}\n\nReferences:\n${context}\n\nQuestion: ${q}`, 400, true, {task:"answer",signal:controller.signal,timeoutMs:15000}), "answer") : "";
+    clearTimeout(answerTimer);
     if (reqId !== questionSeq) return;
     const grounded = groundedAnswer(raw, refs, q);
     const result = competitive ? validateCompetitiveAnswer(grounded,refs,query) : grounded;
+    if(result && competitive){
+      // Legacy/provider single-paragraph output remains readable without inventing claims.
+      result.answer=result.answer.replace(/([.;])\s+(?=(?:Splunk|Datadog|Sumo Logic|Elastic|Microsoft Sentinel|Dynatrace|New Relic|IBM QRadar|Cribl|OpenSearch|Graylog|CrowdStrike)\b)/g,'$1\n\n');
+    }
+    if (!await waitForAnswerContext({current:()=>reqId===questionSeq&&!callEnded,blocked:()=>audioActivity.blocked(turns.at(-1)),lastChanged:()=>answerContextChangedAt,signal:controller.signal}))return;
     if(result && questionId){const item=questionLedger.items.find(q=>q.id===questionId);if(item)recordTiming("questionToSourcedAnswer",Date.now()-item.createdAt);}
     saveAnswer({ q, questionId, category:answerCategory, diagnostics:{readableReferences:refs.length,officialReferences:official.length,validation:result?"accepted":refs.length?"unsupported-or-rejected":"no-readable-evidence"}, ...(result || { answer: "I need to confirm that detail before giving you a firm answer. I will follow up with the relevant documentation.", sources: [] }), status: result ? "grounded" : "unverified" });
     writeSession();
@@ -1307,7 +1322,7 @@ for await (const line of rl) {
     await Promise.allSettled([...attributionTasks]);
     callEnded=true; coachProgress={state:"stopped",message:"Call ended. Pending requests cancelled."};
     activeCoachController?.abort(new DOMException("Call ended","AbortError")); pendingCoachTurn=null; clearTimeout(coachSettleTimer);
-    questionSeq++; activeAnswerController?.abort(new DOMException("Call context ended or corrected","AbortError")); pendingQ = null; questionLedger.end(); if(liveAnswer?.status==="searching")liveAnswer=answerHistory.at(-1)||null; questionLedger.end(); await makeRecap(); writeSession(); archiveSession(); continue;
+    questionSeq++; activeAnswerController?.abort(new DOMException("Call context ended or corrected","AbortError")); pendingQ = null; callKnowledge.clear(); questionLedger.end(); if(liveAnswer?.status==="searching")liveAnswer=answerHistory.at(-1)||null; questionLedger.end(); await makeRecap(); writeSession(); archiveSession(); continue;
   }
 
   if (seg.cmd === "speaker" && Number.isInteger(seg.clusterId) && channelsOfCluster.has(seg.clusterId)) {
@@ -1323,7 +1338,7 @@ for await (const line of rl) {
         roster = roster.map(p=>removedNames.has(p.name) ? {...p,name:seg.name.trim(),side:seg.side,nameEvidence:'Manual speaker correction'} : p);
         upsertRoster(seg.name.trim());Object.assign(roster.find(p=>p.name===seg.name.trim()),{side:seg.side,nameEvidence:'Manual speaker correction'});
       }
-      questionSeq++; activeAnswerController?.abort(new DOMException("Call context ended or corrected","AbortError")); pendingQ = null; liveAnswer = null;
+      questionSeq++; activeAnswerController?.abort(new DOMException("Call context ended or corrected","AbortError")); pendingQ = null; callKnowledge.clear(); liveAnswer = null;
       coverage = {}; confirmed.clear(); covHistory.clear(); nextqDedup.clear();
       frameworkEpoch++;
       rebuildTranscript();
@@ -1498,7 +1513,11 @@ attributionByTurn.set(turn.id,attribution);
 attribution.finally(() => { attributionTasks.delete(attribution); if(seg.wav) recordTiming("speakerAttribution",performance.now()-attributionStarted); });
 writeSession();     // transcript + name on screen NOW; coaching fills in below when it lands
 
-const plan = dialoguePlan(text, turns.filter(t => t.id !== turn.id).slice(-16), {mode:sessionPurpose});
+answerContextChangedAt=Date.now();
+const priorTurns=turns.filter(t=>t.id!==turn.id);
+const pendingComparison=questionLedger.open.at(-1);
+const scopedComparison=!me && !["seller","presenter"].includes(turn.side) && layeredComparison(text,pendingComparison,priorTurns);
+const plan = scopedComparison ? {kind:"answer",request:{category:"competition",query:pendingComparison.query+"\nAdditional scope: "+text},reason:"Refine the pending comparison using the customer’s added scope."} : dialoguePlan(text, turns.filter(t => t.id !== turn.id).slice(-16), {mode:sessionPurpose});
 const docRequest = plan.request || null;
 coachProgress = {state:'listening',message:plan.kind==='listen'?'Listening while they finish their thought.':'Listening for a useful follow-up.'};
 turn.coachIntent = plan.kind;
@@ -1508,7 +1527,8 @@ if (!me || turn.side === "customer") {
   if (!firstCust) firstCust = text;
   if (!["seller", "presenter"].includes(turn.side) && docRequest) {
     if (!followupsSet.has(text)) { followupsSet.add(text); followups.push(text); }
-    const tracked=questionLedger.add({...turn,who:custLabel(turn)},docRequest,docRequest.category==="competition"?"competition":"answer");
+    const tracked=scopedComparison ? pendingComparison : questionLedger.add({...turn,who:custLabel(turn)},docRequest,docRequest.category==="competition"?"competition":"answer");
+    if(scopedComparison){tracked.query=docRequest.query;tracked.turnIds.push(turn.id);tracked.updatedAt=Date.now();}
     for(const q of questionLedger.open)if(q.id!==tracked.id && q.status==='searching')questionLedger.lookup(q.id,'needs_confirmation');
     turn.questionId=tracked.id;questionLedger.lookup(tracked.id,'searching');
     liveAnswer = { questionId:tracked.id,q: text, category:docRequest.category || "product", answer: "Searching official documentation and your knowledge library…", sources: [], status: "searching" };
@@ -1519,7 +1539,7 @@ if (!me || turn.side === "customer") {
     attribution.then(() => {
       if (requestId !== questionSeq) return;
       if (["mixed", "ambiguous"].includes(turn.speakerStatus) || ["seller", "presenter"].includes(turnSide(turn))) { liveAnswer = null; writeSession(); return; }
-      answerFromDocs(text, requestId, docRequest.query,tracked.id);
+      answerFromDocs(scopedComparison ? tracked.q+'\nAdditional context: '+text : text, requestId, docRequest.query,tracked.id);
     });
   }
   // Skip coaching on trivial turns ("yeah", "okay", "mm-hmm") — spending a 3s LLM call on a

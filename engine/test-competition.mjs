@@ -12,6 +12,7 @@ let requests=0;globalThis.fetch=async url=>{requests++;assert.ok(!String(url).in
 const sources=await competitiveSources('Splunk Core versus Sumo Logic');assert.equal(sources.length,4);
 const refs=competitionReferences([],sources);const good=groundedAnswer(JSON.stringify({answer:'Splunk Core supports log search; Sumo Logic supports cloud log analytics and a search query language.',sourceIds:['S1','S3'],supported:true}),refs,'Compare Sumo Logic and Splunk');assert.ok(validateCompetitiveAnswer(good,refs,'Sumo Logic'));
 assert.equal(validateCompetitiveAnswer({...good,sources:[refs[0].source]},refs,'Sumo Logic'),null);
+assert.equal(validateCompetitiveAnswer({...good,answer:'Splunk provides search. Sumo Logic provides'},refs,'Sumo Logic'),null);
 assert.equal(validateCompetitiveAnswer({...good,answer:'Splunk is better than Sumo Logic.'},refs,'Sumo Logic'),null);
 process.env.SALESPILOT_LOCAL_ONLY='1';const count=requests;assert.deepEqual(await competitiveSources('Sumo Logic pricing'),[]);assert.equal(requests,count);
 console.log('PASS competitive detection/context, customer-only signals, both-vendor evidence, superiority rejection and local-only egress');

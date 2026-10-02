@@ -32,7 +32,7 @@ struct CompetitionView: View {
                 Text("A fair comparison, the customer’s criteria, and sources you can check. Competitor mentions are signals to explore—not proof of a weakness.").font(.system(size: 12)).foregroundStyle(.secondary)
                 if let current, current.category == "competition" { LiveAnswerCard(answer: current) }
                 ForEach(competitiveAnswers.indices.reversed(), id: \.self) { i in
-                    if competitiveAnswers[i].q != current?.q { LiveAnswerCard(answer: competitiveAnswers[i]) }
+                    if !competitiveAnswers[i].matchesQuestion(current) { LiveAnswerCard(answer: competitiveAnswers[i]) }
                 }
                 ForEach(signals) { signal in
                     VStack(alignment: .leading, spacing: 12) {
