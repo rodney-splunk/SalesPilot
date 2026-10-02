@@ -10,7 +10,7 @@ struct CompetitiveSignal: Codable, Identifiable {
 }
 struct DiscoveryFocusView: View {
     var body: some View {
-        CollapsibleSection("Discovery only", detail: "Define what a tailored demo should prove", initialExpanded: false) {
+        CollapsibleSection("Discovery first", detail: "Define what a tailored demo should prove", initialExpanded: false) {
             Text("Acknowledge demo requests, explain today’s discovery purpose, then ask what they need the next demo to prove.").font(.callout).foregroundStyle(.secondary)
             ForEach(["Technical · Walk me through one investigation today.", "Business · What does that delay affect for the team?", "Personal · What does that extra work take you away from?"], id: \.self) { Text($0).font(.system(size: 12)).padding(.top, 5) }
             Text("Use the layer that fits their answer. Product and competitive questions still get sourced answers.").font(.caption).foregroundStyle(.secondary).padding(.top, 7)

@@ -163,10 +163,11 @@ struct ReviewView: View {
     @State private var frameworkDisplay = Coaching.selectedName
     @State private var analyzing = false
     @State private var showGuide = false
+    @State private var showCallMode = false
     @State private var showHistory = false
     @State private var showRecap = false
     @State private var showInsights = false
-    @AppStorage("salesPilotGuideSeen") private var guideSeen = false
+    @AppStorage("salesPilotGuideSeenV2") private var guideSeen = false
     @State private var showTranscript = true
     @State private var showReadiness = false
     @State private var showPrivacy = false
@@ -248,12 +249,8 @@ struct ReviewView: View {
                 } label: { Label(frameworkDisplay, systemImage: "slider.horizontal.3") }.fixedSize().help("Choose SPIN, MEDDPICC or Challenger before you join. Switching during a call changes future coaching; past-call coverage keeps its original framework.")
 
                 Menu {
-                    Picker("Call style", selection: $callPurpose) { Text("Standard discovery").tag("standard"); Text("Discovery only").tag("discovery") }
-                } label: { Label(callPurpose == "discovery" ? "Discovery only" : "Standard", systemImage: "scope") }
-                .fixedSize().disabled(live.listening || live.starting || live.finishing)
-                .help("Discovery only keeps today focused on needs and success criteria, and redirects requests for an immediate demo toward a tailored next step. Choose before capture; technical and competitive answers remain available.")
-
-                Menu {
+                    Button("Call mode…") { showCallMode = true }.disabled(live.listening || live.starting || live.finishing)
+                    Divider()
                     Button("Past calls") { showHistory = true }.disabled(live.listening || live.starting || live.finishing)
                     Button("Call context") { CallPrepWindow.shared.show() }
                     Button("Before you join") { showReadiness = true }
@@ -366,7 +363,8 @@ struct ReviewView: View {
         .frame(minWidth: 960, minHeight: 600)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { if !guideSeen { showGuide = true; guideSeen = true } }
-        .sheet(isPresented: $showGuide) { WorkspaceGuide() }
+        .sheet(isPresented: $showGuide) { WorkspaceGuide(canChangeMode: !(live.listening || live.starting || live.finishing)) }
+        .sheet(isPresented: $showCallMode) { CallModeSettings() }
         .sheet(isPresented: $showHistory) { PastCallsView() }
         .sheet(isPresented: $showRecap) { RecapReview(session: session) }
         .sheet(isPresented: $showInsights) {

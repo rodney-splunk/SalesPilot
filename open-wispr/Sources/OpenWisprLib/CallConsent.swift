@@ -23,7 +23,7 @@ struct CallConsent: View {
         VStack(alignment: .leading, spacing: 18) {
             Label("INTERNAL SE ASSISTANT", systemImage: "waveform.path").font(.caption.weight(.semibold)).foregroundStyle(SalesPilotStyle.accent)
             Text("Notify everyone before capture").font(.title2.weight(.semibold))
-            Text(purpose == "discovery" ? "Discovery only · define needs today and a tailored demo as a possible next step." : "Standard discovery · follow the conversation and its next steps.").font(.caption.weight(.medium)).foregroundStyle(SalesPilotStyle.accent)
+            Text(purpose == "discovery" ? "Discovery first · define needs today and a tailored demo as a possible next step." : "Flexible conversation · follow the conversation and its next steps.").font(.caption.weight(.medium)).foregroundStyle(SalesPilotStyle.accent)
             Text("Use the customer-approved wording and your organization’s recording rules. Capture has not started.").font(.callout).foregroundStyle(.secondary)
             Picker("Live processing", selection: $mode) { Text("Cisco + docs").tag("circuit"); Text("Local only").tag("local") }.pickerStyle(.segmented).onChange(of: mode) { _ in confirmed = false }
             Text(notice).font(.system(size: 15)).padding(16).background(SalesPilotStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))

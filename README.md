@@ -64,8 +64,8 @@ Only approved Cisco authentication and inference hosts are enabled. Hosted model
 
 ## Using SalesPilot
 
-1. Open the workspace from the menu-bar app. Choose SPIN, MEDDPICC or Challenger.
-2. Choose **Standard** for flexible coaching, or **Discovery only** to understand needs today and shape a tailored demo as a possible next step. Choose before capture. Technical and competitive questions remain available in either mode.
+1. Open the workspace from the menu-bar app. Onboarding begins with a mode chooser that explains both choices; your selection is saved. Choose SPIN, MEDDPICC or Challenger.
+2. Choose **More → Call mode → Flexible conversation** for a mixed agenda, or **Discovery first** to understand needs today and shape a tailored demo as a possible next step. Choose before capture. Technical and competitive questions remain available in either mode.
 3. Use **More → Call context** for the goal, background and current-call participants/exact name spellings. Save deliberately; an unsaved draft does not replace live context. Clear context between unrelated customers.
 4. Run **More → Before you join**. Check microphone, local models, permissions and provider readiness. Obtain all required authorization and consent before capture.
 5. Start a call and select **Cisco + docs** or **Local only** at the consent checkpoint. The checkbox is an operator attestation, not proof of participant consent.
