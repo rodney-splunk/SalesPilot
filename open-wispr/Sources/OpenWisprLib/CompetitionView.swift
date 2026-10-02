@@ -37,7 +37,7 @@ struct CompetitionView: View {
                 ForEach(signals) { signal in
                     VStack(alignment: .leading, spacing: 12) {
                         HStack { Text(signal.name).font(.headline); Spacer(); Text("Mentioned on call").font(.caption).foregroundStyle(.secondary) }
-                        Button { onEvidence(signal.quote) } label: { VStack(alignment: .leading, spacing: 5) { Text(signal.quote).font(.callout).lineLimit(3); Text(signal.speaker + " · open transcript").font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
+                        Button { onEvidence(signal.quote) } label: { VStack(alignment: .leading, spacing: 5) { Text(signal.quote).font(.callout).fixedSize(horizontal: false, vertical: true); Text(signal.speaker + " · open transcript").font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
                         Divider()
                         Text("VALIDATE THE FIT").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                         Text(signal.probe).font(.system(size: 15, weight: .medium)).textSelection(.enabled)

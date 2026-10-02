@@ -328,7 +328,7 @@ struct ReviewView: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(person.name + (person.nameEvidence?.contains("voice not yet confirmed") == true ? " · expected" : "")).font(.system(size: 12, weight: .semibold))
                                         Text([person.side == "seller" ? "My team" : person.side == "customer" ? "Customer" : "Team unconfirmed", person.role ?? person.organization ?? ""].filter { !$0.isEmpty }.joined(separator: " · "))
-                                            .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
+                                            .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                                     }.frame(maxWidth: 220, alignment: .leading)
                                 }
                             }.padding(.horizontal, 24).padding(.vertical, 8)
@@ -518,9 +518,8 @@ struct ReviewView: View {
             // has to hold one without clipping while staying fixed so every row still lines up.
             Text(who.uppercased()).font(.system(size: 10, weight: .bold))
                 .foregroundStyle(me ? Color.accentColor : Color.secondary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .minimumScaleFactor(0.75)
-                .truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: 80, alignment: .leading)
             VStack(alignment: .leading, spacing: 8) {
@@ -550,9 +549,8 @@ struct ReviewView: View {
             // has to hold one without clipping while staying fixed so every row still lines up.
             Text(who.uppercased()).font(.system(size: 10, weight: .bold))
                 .foregroundStyle(me ? Color.accentColor : Color.secondary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .minimumScaleFactor(0.75)
-                .truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: 80, alignment: .leading)
             (Text(committed).foregroundColor(.primary)
@@ -571,8 +569,8 @@ struct ReviewView: View {
                             Image(systemName: "books.vertical")
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(answer.category == "competition" ? (answer.status == "searching" ? "Checking competitive sources" : answer.status == "unverified" ? "Competitive answer needs confirmation" : "Competitive answer ready") : answer.status == "searching" ? "Searching for an answer" : answer.status == "unverified" ? "Answer needs confirmation" : "Answer ready").font(.system(size: 12, weight: .semibold))
-                                Text(answer.q).font(.system(size: 12)).lineLimit(2)
-                                Text(answer.answer).font(.system(size: 13)).foregroundStyle(.primary).lineLimit(5)
+                                Text(answer.q).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                                Text(answer.answer).font(.system(size: 13)).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
                                 Text(answer.status == "unverified" ? "Needs confirmation · open sources" : "Open answer and sources").font(.system(size: 10)).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -620,7 +618,7 @@ struct ReviewView: View {
                     if let cue = session.nextq.first {
                         Text(cue.q).font(.system(size: 19, weight: .medium, design: .rounded))
                             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                        Text(cue.reason.map { "Why: " + $0 } ?? ("Explore " + cue.tag)).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).lineLimit(2)
+                        Text(cue.reason.map { "Why: " + $0 } ?? ("Explore " + cue.tag)).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text(live.listening ? "Listen for their next thought." : "Ready for your next conversation.")
                             .font(.system(size: 22, weight: .medium, design: .rounded))

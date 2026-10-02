@@ -23,13 +23,17 @@ struct CallConsent: View {
         VStack(alignment: .leading, spacing: 18) {
             Label("INTERNAL SE ASSISTANT", systemImage: "waveform.path").font(.caption.weight(.semibold)).foregroundStyle(SalesPilotStyle.accent)
             Text("Notify everyone before capture").font(.title2.weight(.semibold))
+            ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
             Text(purpose == "discovery" ? "Discovery first · define needs today and a tailored demo as a possible next step." : "Flexible conversation · follow the conversation and its next steps.").font(.caption.weight(.medium)).foregroundStyle(SalesPilotStyle.accent)
             Text("Use the customer-approved wording and your organization’s recording rules. Capture has not started.").font(.callout).foregroundStyle(.secondary)
             Picker("Live processing", selection: $mode) { Text("Cisco + docs").tag("circuit"); Text("Local only").tag("local") }.pickerStyle(.segmented).onChange(of: mode) { _ in confirmed = false }
-            Text(notice).font(.system(size: 15)).padding(16).background(SalesPilotStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+            Text(notice).font(.system(size: 15)).fixedSize(horizontal: false, vertical: true).padding(16).background(SalesPilotStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
             Button("Copy suggested notice") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(notice, forType: .string) }
-            Text("Names and voice groups are assigned within this call. Transcripts, notes and recaps are stored locally; generated suggestions need your review. No email or CRM update is sent automatically. Masking reduces known contact details; it is not a complete sensitive-data detector.").font(.caption).foregroundStyle(.secondary)
-            Toggle("I have notified all participants and confirmed the required consent and authorization for this call.", isOn: $confirmed).font(.callout)
+            Text("Names and voice groups are assigned within this call. Transcripts, notes and recaps are stored locally; generated suggestions need your review. No email or CRM update is sent automatically. Masking reduces known contact details; it is not a complete sensitive-data detector.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle(isOn: $confirmed) { Text("I have notified all participants and confirmed the required consent and authorization for this call.").fixedSize(horizontal: false, vertical: true) }.font(.callout)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            }
             Spacer(minLength: 0)
             HStack { Button("Cancel") { CallConsentWindow.shared.close() }; Spacer(); Button("Start with consent confirmed") { CallConsentWindow.shared.close(); LiveHUD.shared.start(consentConfirmed: true) }.buttonStyle(.borderedProminent).tint(SalesPilotStyle.buttonFill).disabled(!confirmed) }
         }.padding(26).frame(width: 630, height: 600).background(Color(nsColor: .windowBackgroundColor))

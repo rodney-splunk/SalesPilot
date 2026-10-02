@@ -55,18 +55,20 @@ struct LiveHUDView: View {
                     .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
                     .disabled(!state.listening).accessibilityLabel("End call")
             }
+            ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
             if let notice = state.audioNotice {
                 Label(notice, systemImage: "ear.badge.waveform").font(.system(size: 11)).foregroundStyle(.orange)
             }
             if let e = state.engineError {
-                Text("⚠︎ \(e)").font(.system(size: 10, weight: .semibold)).foregroundStyle(.orange).lineLimit(2)
+                Text("⚠︎ \(e)").font(.system(size: 10, weight: .semibold)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             if let a = state.answer {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(state.answerStatus == "unverified" ? "◆ FOLLOW UP" : (state.answerStatus == "searching" ? "◆ SEARCHING SOURCES" : "◆ LIVE ANSWER"))
                         .font(.system(size: 9, weight: .bold)).foregroundStyle(SalesPilotStyle.accent)
-                    Text(a).font(.system(size: 12, weight: .medium)).lineLimit(4).fixedSize(horizontal: false, vertical: true)
-                    if let src = state.answerSources { Text(src).font(.system(size: 9)).foregroundStyle(.tertiary).lineLimit(1) }
+                    Text(a).font(.system(size: 12, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                    if let src = state.answerSources { Text(src).font(.system(size: 9)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true) }
                 }
                 .padding(8).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.green.opacity(0.16), in: RoundedRectangle(cornerRadius: 8))
@@ -74,10 +76,12 @@ struct LiveHUDView: View {
             VStack(alignment: .leading, spacing: 7) {
                 Label("NEXT MOVE", systemImage: "sparkle").font(.system(size: 10, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                 Text(state.nextQuestion ?? "Listen for their next thought.")
-                    .font(.system(size: 17, weight: .medium, design: .rounded)).lineLimit(5)
+                    .font(.system(size: 17, weight: .medium, design: .rounded)).fixedSize(horizontal: false, vertical: true)
                 if let target = state.nextQuestionTarget { Text(target).font(.system(size: 10)).foregroundStyle(.secondary) }
             }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                 .background(SalesPilotStyle.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            }
             HStack {
                 Button(showTranscript ? "Hide transcript" : "Show transcript") { showTranscript.toggle() }.buttonStyle(.plain)
                 Spacer()
@@ -96,7 +100,7 @@ struct LiveHUDView: View {
                         liveLine("customer", state.custCommitted, state.custProvisional)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
-            }
+            }.frame(height: 140)
             }
         }
         .padding(16).frame(width: 380, height: panelHeight, alignment: .topLeading)
@@ -113,7 +117,7 @@ struct LiveHUDView: View {
         let label = resolved ?? (s == "you" ? (state.whoByText[SpeakerLookup.microphoneKey] ?? "You").uppercased() : "UNCONFIRMED")
         return Text(label).font(.system(size: 9, weight: .bold))
             .foregroundStyle(s == "you" ? Color.accentColor : Color.orange)
-            .lineLimit(2).minimumScaleFactor(0.75).frame(width: 65, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true).minimumScaleFactor(0.75).frame(width: 65, alignment: .leading)
     }
     private func line(_ speaker: String, _ text: String, committed: Bool, startedAt: Double? = nil) -> some View {
         HStack(alignment: .top, spacing: 8) {

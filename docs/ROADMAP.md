@@ -136,3 +136,10 @@ Use [Contributing](../CONTRIBUTING.md), [README](../README.md), [Privacy boundar
 Installed UI acceptance: both modes visually reviewed; mode switch updates the fictional transcript and Next Move; Coach opens Research → Competition; Exit example restores the actual 0-turn workspace. Idle warning is absent. Installed binary SHA-256: `97c6b8cffc52813d72088e268d104e01e2cdb278db4382364a1ea0122ed50c5e`. No actual call was captured for these checks.
 
 Final retry routing carries the failed question ID in progress state; coach retries cannot select an older unresolved product question. Targeted retry/stop replay passed after this refinement.
+
+
+## October 2 text readability audit (UX-01)
+
+Implemented full wrapping in call-mode descriptions/examples, onboarding mode cards, coaching questions/answers/reasons, competition transcript quotes, speaker names/roles and saved-call titles/subtitles. Removed silent line limits and tail truncation. Call-mode settings and consent content scroll with footer actions outside the scroll region. Compact Next Move, answers, sources and errors scroll rather than ending at a line limit; workspace/transcript actions remain visible, with a separate bounded transcript scroll.
+
+Verification: signed build and 13/13 isolated native checks passed. Installed mode settings and initial onboarding visually reviewed with both complete descriptions and examples. Rendered workspace Coach, Notes, Competition, call preparation, consent and 380-point compact window reviewed. No audio was captured or audio devices changed. Existing editors and full-content workspace sections already scroll. This closes the identified truncation defects; contributor acceptance still includes unusually long real content and narrower split panes as part of UX-01, rather than claiming every possible layout is certified.

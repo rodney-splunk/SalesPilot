@@ -64,8 +64,8 @@ struct PastCallsView: View {
                             dismiss()
                         } label: {
                             VStack(alignment: .leading, spacing: 5) {
-                                Text(call.name ?? call.title).font(.headline)
-                                Text(call.subtitle).font(.caption).foregroundStyle(.secondary)
+                                Text(call.name ?? call.title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                                Text(call.subtitle).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                                 Text("\(call.framework) · \(call.turns.count) turns · \(callDate(url))").font(.caption).foregroundStyle(.secondary)
                             }.frame(maxWidth: .infinity, alignment: .leading).padding(14).background(SalesPilotStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                         }.buttonStyle(.plain).disabled(LiveState.shared.listening || LiveState.shared.starting || LiveState.shared.finishing)
