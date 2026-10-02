@@ -133,4 +133,6 @@ Use [Contributing](../CONTRIBUTING.md), [README](../README.md), [Privacy boundar
 - Synthetic verification: 18 selected regression suites passed, plus product-context, question-continuity, duplicate-cleanup and audio-activity checks. New outage/retry/stop replay passed. Native checks expanded to 13/13 for both examples and existing state/context/consent behavior.
 - Still open: full presentation rehearsal, natural audio attribution/overlap acceptance, full-hour repaired recap finalization, production latency and every-vendor live acceptance. These changes do not close those gates.
 
-Installed UI acceptance: both modes visually reviewed; mode switch updates the fictional transcript and Next Move; Coach opens Research → Competition; Exit example restores the actual 0-turn workspace. Idle warning is absent. Installed binary SHA-256: `8957730cc942bdf05db657498f9e6bf244e352b258c4c6b43b61800671155d33`. No actual call was captured for these checks.
+Installed UI acceptance: both modes visually reviewed; mode switch updates the fictional transcript and Next Move; Coach opens Research → Competition; Exit example restores the actual 0-turn workspace. Idle warning is absent. Installed binary SHA-256: `97c6b8cffc52813d72088e268d104e01e2cdb278db4382364a1ea0122ed50c5e`. No actual call was captured for these checks.
+
+Final retry routing carries the failed question ID in progress state; coach retries cannot select an older unresolved product question. Targeted retry/stop replay passed after this refinement.

@@ -5,7 +5,7 @@ const p=spawn(process.execPath,['--import',new URL('../tests/engine/mock-retry-p
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));const read=()=>{try{return JSON.parse(readFileSync(file))}catch{return null}};const send=obj=>p.stdin.write(JSON.stringify(obj)+'\n');async function until(fn){for(let i=0;i<300;i++){const s=read();if(s&&fn(s))return s;await sleep(25)}throw Error(errors)}
 try{
  await until(()=>true);send({speaker:'customer',text:'How does Splunk differ from Sumo Logic?'});
- let s=await until(s=>s.liveAnswer?.requestFailed===true);assert.equal(s.coachProgress.state,'failed');const id=s.customerQuestions[0].id;assert.equal(s.customerQuestions[0].status,'needs_confirmation');
+ let s=await until(s=>s.liveAnswer?.requestFailed===true);assert.equal(s.coachProgress.state,'failed');const id=s.customerQuestions[0].id;assert.equal(s.coachProgress.questionId,id);assert.equal(s.customerQuestions[0].status,'needs_confirmation');
  send({cmd:'retry',id});s=await until(s=>s.liveAnswer?.status==='grounded');assert.equal(s.customerQuestions.length,1);assert.equal(s.customerQuestions[0].status,'ready');assert.equal(s.coachProgress.state,'ready');
  send({cmd:'question',id,status:'answered'});await until(s=>s.customerQuestions[0].status==='answered');send({cmd:'retry',id});await sleep(100);assert.equal(read().customerQuestions[0].status,'answered');
  send({speaker:'customer',text:'Which is cheaper, Splunk or Sumo Logic pricing?'});await until(s=>s.liveAnswer?.status==='searching');send({cmd:'recap'});s=await until(s=>s.recap);assert.ok(!s.customerQuestions.some(q=>q.status==='searching'));const before=JSON.stringify(s.liveAnswer);

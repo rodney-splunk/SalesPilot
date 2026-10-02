@@ -18,7 +18,7 @@ extension Notification.Name {
 // MARK: - Session schema (matches engine/build-session.mjs output)
 struct VoiceFragment: Codable { var text: String; var who: String; var start: Double; var end: Double }
 struct TurnData: Codable { var me: Bool; var who: String; var time: String; var text: String; var coachTarget: String?; var coachQ: String?; var startedAt: Double? = nil; var side: String? = nil; var rawText: String? = nil; var speakerStatus: String? = nil; var voiceFragments: [VoiceFragment]? = nil }
-struct CoachProgress: Codable { var state: String; var message: String }
+struct CoachProgress: Codable { var state: String; var message: String; var questionId: Int? = nil }
 struct CustomerQuestion: Codable, Identifiable { var id: Int; var q: String; var speaker: String; var status: String; var kind: String; var turnIds: [Int]; var answer: LiveAnswer? = nil }
 struct CoverageDetail: Codable { var id: String; var name: String; var status: String; var quote: String?; var turnId: Int?; var speakerUnconfirmed: Bool; var criterion: String; var remaining: String }
 struct CovData: Codable { var name: String; var status: String }
@@ -613,7 +613,7 @@ struct ReviewView: View {
                     }
                     if live.listening, session.coachProgress?.state == "failed" {
                         Button("Retry") {
-                            if let question = (session.customerQuestions ?? []).last(where: { $0.status == "needs_confirmation" }) { LiveCoach.shared.retryRequest(id: question.id) }
+                            if let id = session.coachProgress?.questionId { LiveCoach.shared.retryRequest(id: id) }
                             else { LiveCoach.shared.retryRequest() }
                         }.font(.caption).help("Retry without marking the customer question answered.")
                     }

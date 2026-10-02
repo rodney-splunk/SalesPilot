@@ -216,7 +216,7 @@ let liveAnswer = null;
 const answerHistory = [];
 function saveAnswer(answer) {
   liveAnswer = answer;
-  coachProgress = {state:answer.requestFailed ? 'failed' : answer.status==='grounded' ? 'ready' : 'needs_confirmation', message:answer.requestFailed ? 'Documentation request failed. Retry the search or defer the question.' : answer.status==='grounded' ? 'A sourced answer is ready. Review it before delivery.' : 'Evidence is insufficient. Keep the question open or defer it.'};
+  coachProgress = {questionId:answer.questionId,state:answer.requestFailed ? 'failed' : answer.status==='grounded' ? 'ready' : 'needs_confirmation', message:answer.requestFailed ? 'Documentation request failed. Retry the search or defer the question.' : answer.status==='grounded' ? 'A sourced answer is ready. Review it before delivery.' : 'Evidence is insufficient. Keep the question open or defer it.'};
   if(answer.questionId)questionLedger.lookup(answer.questionId,answer.status === "grounded" ? "ready" : "needs_confirmation",answer);
   answerHistory.push({...answer, receivedAt: Date.now()});
 }
