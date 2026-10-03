@@ -38,7 +38,7 @@ The above summarizes prior checks; this roadmap update runs no new audio/provide
 
 ## Milestone A — polished leadership presentation
 
-Use fictional data and an explicitly described pilot. A curated example demonstrates intended behavior; it does not prove live transcription/model accuracy. Resolve P0 items before calling the presentation rehearsed. See [presentation runbook](PRESENTATION.md).
+Use fictional data and an explicitly described pilot. A curated example demonstrates intended behavior; it does not prove live transcription/model accuracy. Resolve P0 items before calling the presentation rehearsed.
 
 | ID / priority | Deliverable and state | Acceptance criteria | Dependencies / role |
 | --- | --- | --- | --- |
@@ -125,7 +125,7 @@ A presentation can use verified fictional examples while audio certification rem
 - QA/reliability: REL-01, DEV-03 and reproduction-oriented bug reports.
 - Platform/security: DEV-02, GOV-04 and scoped review intake.
 
-Use [Contributing](../CONTRIBUTING.md), [README](../README.md), [Privacy boundaries](PRIVACY.md) and [presentation runbook](PRESENTATION.md). Create/claim an issue before parallel work, and coordinate shared modules such as `serve.mjs`, `ReviewView.swift` and `core.mjs` to avoid incompatible changes.
+Use [Contributing](../CONTRIBUTING.md), [README](../README.md), [Privacy boundaries](PRIVACY.md). Create/claim an issue before parallel work, and coordinate shared modules such as `serve.mjs`, `ReviewView.swift` and `core.mjs` to avoid incompatible changes.
 
 
 ## October 2 polish implementation and evidence

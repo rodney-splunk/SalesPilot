@@ -4,7 +4,7 @@ Internal Mac discovery assistant for Solutions Engineers. SalesPilot transcribes
 
 ## Roadmap and next presentation
 
-The [complete roadmap](docs/ROADMAP.md) tracks presentation polish, customer-pilot acceptance and deployment gates with stable task IDs, priorities, criteria and dependencies. Use the [presentation runbook](docs/PRESENTATION.md) for next week’s rehearsal. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
+The [complete roadmap](docs/ROADMAP.md) tracks presentation polish, customer-pilot acceptance and deployment gates with stable task IDs, priorities, criteria and dependencies. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
 
 ## Start here
 
