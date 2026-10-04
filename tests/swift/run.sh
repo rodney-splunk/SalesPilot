@@ -12,7 +12,9 @@ for t in "$HERE"/*-test.swift; do
   name=$(basename "$t" -test.swift)
   # Top-level statements are only legal in a file called main.swift, so stage it under that name.
   mkdir -p "$OUT/$name.d" && cp "$t" "$OUT/$name.d/main.swift"
-  if [ "$name" = "privacy-data" ]; then
+  if [ "$name" = "credential-cache" ]; then
+    sources=("$SRC/SessionCredentialCache.swift")
+  elif [ "$name" = "privacy-data" ]; then
     sources=("$SRC/PrivacyData.swift")
   elif [ "$name" = "capture-journal" ]; then
     sources=("$SRC/CaptureJournal.swift" "$SRC/WorkspacePaths.swift")

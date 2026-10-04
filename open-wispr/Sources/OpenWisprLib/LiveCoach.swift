@@ -72,6 +72,7 @@ final class LiveCoach {
         environment["SALESPILOT_CALL_ID"] = CaptureJournal.callID
         environment["SALESPILOT_CALL_PURPOSE"] = UserDefaults.standard.string(forKey: "callPurpose") ?? "standard"
         environment["SALESPILOT_CREDENTIAL_READER"] = Bundle.main.executableURL?.path
+        environment["SALESPILOT_CREDENTIAL_INPUT"] = "stdin"
         environment["SALESPILOT_CONSENT_CONFIRMED_AT"] = ISO8601DateFormatter().string(from: Date())
         environment["SALESPILOT_CALL_PROCESSING_MODE"] = UserDefaults.standard.string(forKey: "callProcessingMode") ?? "circuit"
         if environment["SALESPILOT_CALL_PROCESSING_MODE"] == "local" {
@@ -166,6 +167,18 @@ final class LiveCoach {
             try p.run()
             proc = p
             stdin = inPipe.fileHandleForWriting
+            if environment["SALESPILOT_CALL_PROCESSING_MODE"] != "local" && ProviderCredentials.isConfigured {
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    let data = try? ProviderCredentials.data()
+                    let credentials = data.flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? [:]
+                    let bootstrap = try? JSONSerialization.data(withJSONObject: ["cmd": "provider-credentials", "credentials": credentials])
+                    DispatchQueue.main.async {
+                        guard let self, self.isCurrent(epoch), self.proc === p, let bootstrap else { return }
+                        do { try self.stdin?.write(contentsOf: bootstrap + Data([10])) }
+                        catch { LiveState.shared.engineError = "Could not authorize Cisco coaching. Transcript capture continues." }
+                    }
+                }
+            }
         } catch {
             NSLog("LiveCoach start failed: \(error.localizedDescription)")
             DispatchQueue.main.async {

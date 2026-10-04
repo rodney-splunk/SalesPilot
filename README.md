@@ -233,6 +233,7 @@ Change coaching logic with interrupted/fragmented conversations, topic changes a
 - **App cannot find engine:** the clone moved or the bundle embeds another workspace. Rebuild from this clone; do not share Rodney's prebuilt app with its machine-specific path.
 - **No transcription:** run readiness, verify whisper binaries/models and Mac audio permissions. Restart only after ending any active capture.
 - **Channel labels or uncertain speakers:** optional speaker runtime/model may be missing, or speech is too short/overlapping. Check locally; do not invent participants.
+- **Repeated Keychain prompts:** the native app caches authorized Cisco credentials in memory for its running session and supplies new call engines through a private pipe. Quitting clears that cache. “Privacy & local data → Check Cisco credential access” explicitly reloads credentials after rotation. Keep the app path and signing identity stable across updates; macOS may require authorization again if either changes. Call consent remains a separate checkpoint for each meeting.
 - **No hosted answer:** check your CIRCUIT registration, Keychain access and provider readiness. Do not weaken host or certificate checks.
 - **No source-backed comparison:** vendor documentation may be unavailable or evidence insufficient. Needs confirmation is expected; avoid inventing facts.
 - **Slow coaching:** examine model choice and local memory pressure. Local fallback can take several seconds; production timing is not guaranteed.

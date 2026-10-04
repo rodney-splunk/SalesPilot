@@ -22,9 +22,16 @@ if [ -z "${SDKROOT:-}" ]; then
   [ -z "${SDKROOT:-}" ] && echo "==> WARNING: no SDK here can compile SwiftUI; build will fail" >&2
 fi
 echo "==> Building release binary… (SDK: $(basename "${SDKROOT:-default}"))"
-swift build -c release --disable-sandbox 2>&1 | tail -2
+swift build -c release --disable-sandbox
 
 APP="${SALESPILOT_APP_PATH:-$HOME/Applications/SalesPilot.app}"
+# Refuse to replace a trusted installed identity with an ad-hoc update.
+SIGN_ID="SalesPilot Self-Signed"
+security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_ID" || SIGN_ID="-"
+if [ -d "$APP" ] && [ "$SIGN_ID" = "-" ] && codesign -dv "$APP" 2>&1 | grep -q 'Authority='; then
+  echo "Signing identity unavailable: keep the installed app intact. Restore its signing identity or build to a separate SALESPILOT_APP_PATH." >&2
+  exit 1
+fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/open-wispr "$APP/Contents/MacOS/SalesPilot"
@@ -90,8 +97,6 @@ PLIST
 
 # Sign with the stable self-signed identity if present (so TCC permission grants survive rebuilds);
 # fall back to ad-hoc only if the cert isn't installed.
-SIGN_ID="SalesPilot Self-Signed"
-security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_ID" || SIGN_ID="-"
 echo "==> Code signing with: $SIGN_ID"
 codesign --force --deep --sign "$SIGN_ID" "$APP"
 codesign -dv "$APP" 2>&1 | grep -iE "Authority|Identifier" | head -2 || true

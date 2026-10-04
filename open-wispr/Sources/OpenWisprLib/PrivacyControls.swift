@@ -4,7 +4,16 @@ import Security
 import SwiftUI
 
 public enum ProviderCredentials {
-    static func data() throws -> Data {
+    private static let sessionCache = SessionCredentialCache()
+    static var isConfigured: Bool {
+        guard let data = try? Data(contentsOf: WorkspacePaths.engine.appendingPathComponent(".circuit.json")),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
+        return config["credential_store"] as? String == "macos-keychain"
+    }
+    static func data(refresh: Bool = false) throws -> Data {
+        try sessionCache.read(refresh: refresh) { try readKeychain() }
+    }
+    private static func readKeychain() throws -> Data {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.salespilot.circuit", kSecAttrAccount as String: "credentials", kSecReturnData as String: true]
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -43,7 +52,7 @@ struct PrivacyControls: View {
                 Button(checking ? "Checking Keychain…" : "Check Cisco credential access") {
                     checking = true
                     DispatchQueue.global().async {
-                        let ok = (try? ProviderCredentials.data()) != nil
+                        let ok = (try? ProviderCredentials.data(refresh: true)) != nil
                         DispatchQueue.main.async { checking = false; status = ok ? "SalesPilot can access its Cisco credentials in Keychain." : "Access unavailable. Allow only SalesPilot for its app-specific item in Keychain; do not allow all applications." }
                     }
                 }.disabled(checking)

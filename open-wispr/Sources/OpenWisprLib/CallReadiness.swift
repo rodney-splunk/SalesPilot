@@ -43,10 +43,14 @@ final class CallReadinessModel: ObservableObject {
                 process.arguments = [WorkspacePaths.engine.appendingPathComponent("readiness.mjs").path] + (online ? ["--online"] : [])
                 var environment = ProcessInfo.processInfo.environment
                 environment["SALESPILOT_CREDENTIAL_READER"] = Bundle.main.executableURL?.path
+                environment["SALESPILOT_CREDENTIAL_INPUT"] = "stdin"
                 if UserDefaults.standard.string(forKey: "callProcessingMode") == "local" { environment["SALESPILOT_LOCAL_ONLY"] = "1" }
                 process.environment = environment
+                let input = Pipe(); process.standardInput = input
+                let credentials: Any = online && environment["SALESPILOT_LOCAL_ONLY"] != "1" && ProviderCredentials.isConfigured ? ((try? ProviderCredentials.data()).flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? [:]) : [:]
+                let bootstrap = try? JSONSerialization.data(withJSONObject: ["cmd": "provider-credentials", "credentials": credentials])
                 let pipe = Pipe(); process.standardOutput = pipe; process.standardError = FileHandle.nullDevice
-                do { try process.run(); let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }; DispatchQueue.global().asyncAfter(deadline: .now() + 25, execute: deadline); defer { deadline.cancel() }; let data = pipe.fileHandleForReading.readDataToEndOfFile(); process.waitUntilExit(); remote = (try? JSONDecoder().decode(ReadinessReport.self, from: data))?.checks ?? [] } catch {}
+                do { try process.run(); if let bootstrap { try input.fileHandleForWriting.write(contentsOf: bootstrap + Data([10])) }; try input.fileHandleForWriting.close(); let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }; DispatchQueue.global().asyncAfter(deadline: .now() + 25, execute: deadline); defer { deadline.cancel() }; let data = pipe.fileHandleForReading.readDataToEndOfFile(); process.waitUntilExit(); remote = (try? JSONDecoder().decode(ReadinessReport.self, from: data))?.checks ?? [] } catch {}
             }
             if remote.isEmpty { remote = [.init(id: "coaching", state: "unavailable", detail: "Could not check the local engine. Transcript capture and coaching readiness are separate.")] }
             DispatchQueue.main.async { self.checks = local + remote; self.busy = false; self.checkedAt = Date() }

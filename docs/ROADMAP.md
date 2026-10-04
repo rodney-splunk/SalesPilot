@@ -114,3 +114,9 @@ Release gates: no lost accepted audio/turn/evidence, no cross-call output leak, 
 - Static inventory and cross-layer review of source revision `04fc766`; hot paths inspected in depth. Findings and unresolved assumptions are recorded in ARCHITECTURE-REVIEW.md.
 - No application implementation changes, install/restart, audio capture/device change, production-provider call or natural-call acceptance performed by this review.
 - Fresh `bash scripts/test-safe.sh` completed with exit 0: all 24 selected suites passed using synthetic/isolated transports. This validates the selected regression scenarios, not production latency or real audio. Prior native/audio results remain in ROADMAP-HISTORY.md with their original limits; the full-hour recap retest and 120–180-minute acceptance are still open.
+
+### October 4 credential lifecycle fix
+
+CORE-21/CORE-12: native app now caches authorized credentials for its running lifetime, shares them with call/readiness engines only through private stdin, supports explicit refresh, and skips automatic Keychain reads for local-only/unconfigured calls. Bootstrap messages are consumed before transcript handling. Packaging refuses to overwrite a certificate-signed app with an ad-hoc update when the signing identity is unavailable.
+
+Validation: all 25 safe engine suites pass, including private bootstrap input guards; native cache tests cover repeated/concurrent access, refresh and retry after failure. Real macOS repeated-call authorization acceptance remains pending: this Mac does not expose the installed app's signing identity. Per-call consent remains intentional. No installed-app restart or credential ACL changes were made.

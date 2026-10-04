@@ -20,6 +20,7 @@ import { mentionedPeople } from './mentioned-people.mjs';
 // recap, and answers customer questions from your docs (local RAG).
 
 import { createInterface } from "node:readline";
+import { acceptCircuitCredentials } from "./circuit.mjs";
 import { writeFileSync, renameSync, mkdirSync, readFileSync, existsSync, unlinkSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -1282,6 +1283,11 @@ for await (const line of rl) {
   let seg;
   try { seg = JSON.parse(s); } catch { continue; }
   if (!seg || typeof seg !== "object" || Array.isArray(seg)) continue; // null/array/scalar → skip (no crash)
+
+  if(seg.cmd === 'provider-credentials') {
+    acceptCircuitCredentials(seg);
+    continue; // private bootstrap is never a transcript, log or session event
+  }
 
   if(seg.cmd === 'retry') {
     if(callEnded)continue;

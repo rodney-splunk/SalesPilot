@@ -16,11 +16,39 @@ export function circuitConfig() {
 }
 
 let credentialRequest=null, credentialCache=null;
+let bootstrapResolve, bootstrapReject, bootstrapTimer, bootstrapError;
+// The parent native app owns authorization. Only its private stdin pipe carries secrets;
+// never an environment variable, argument, journal, stdout or session snapshot.
+export function acceptCircuitCredentials(message) {
+  if(process.env.SALESPILOT_CREDENTIAL_INPUT!=="stdin" || process.env.SALESPILOT_LOCAL_ONLY==='1' || credentialCache)return false;
+  const config=circuitConfig();
+  if(config.credential_store!=="macos-keychain")return false;
+  const value=message?.credentials;
+  if(!value || typeof value.client_secret!=="string" || !value.client_secret || typeof value.app_key!=="string" || !value.app_key || value.client_secret.length>16384 || value.app_key.length>16384) {
+    bootstrapError=Error("Cisco credentials unavailable; check SalesPilot Keychain access.");clearTimeout(bootstrapTimer);bootstrapReject?.(bootstrapError);return false;
+  }
+  credentialCache={...config,client_secret:value.client_secret,app_key:value.app_key};
+  clearTimeout(bootstrapTimer);bootstrapResolve?.(credentialCache);return true;
+}
+export function credentialBootstrapLine(data) {
+  let message;try{message=JSON.parse(String(data));}catch{return false;}
+  return message?.cmd==='provider-credentials' ? acceptCircuitCredentials(message) : false;
+}
+
 export async function circuitCredentials() {
   if(process.env.SALESPILOT_LOCAL_ONLY==='1')throw Error("Local-only processing blocks Cisco credentials and inference");
   const config=circuitConfig();
   if(config.credential_store!=='macos-keychain')return config;
   if(credentialCache)return credentialCache;
+  if(process.env.SALESPILOT_CREDENTIAL_INPUT==='stdin') {
+    if(bootstrapError)throw bootstrapError;
+    if(!credentialRequest)credentialRequest=new Promise((resolve,reject)=>{
+      bootstrapResolve=resolve;bootstrapReject=reject;
+      bootstrapTimer=setTimeout(()=>reject(Error("Cisco credential authorization did not complete.")),120000);
+      bootstrapTimer.unref();
+    });
+    return credentialRequest;
+  }
   if(!credentialRequest)credentialRequest=(async()=>{
     try {
       const reader=process.env.SALESPILOT_CREDENTIAL_READER;

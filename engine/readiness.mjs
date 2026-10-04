@@ -2,7 +2,8 @@
 import {existsSync,readFileSync,statSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {circuitConfig,circuitToken} from './circuit.mjs';
+import {circuitConfig,circuitToken,credentialBootstrapLine} from './circuit.mjs';
+import {createInterface} from 'node:readline';
 export async function readiness({root=resolve(fileURLToPath(new URL('..',import.meta.url))),online=false}={}) {
  const checks=[];const add=(id,state,detail)=>checks.push({id,state,detail});
  const config=circuitConfig();
@@ -20,4 +21,11 @@ export async function readiness({root=resolve(fileURLToPath(new URL('..',import.
  const index=resolve(root,'sessions/rag-index.json');try{const value=JSON.parse(readFileSync(index));add('references',value.records?.length?'available':'optional',value.records?.length?`${new Set(value.records.map(r=>r.file)).size} indexed references; last indexed ${new Date(statSync(index).mtimeMs).toISOString()}.`:'No local documents indexed. Official documentation remains available separately.');}catch{add('references','optional','No local documents indexed.');}
  return {checkedAt:new Date().toISOString(),online,checks};
 }
-if(process.argv[1]===fileURLToPath(import.meta.url))console.log(JSON.stringify(await readiness({online:process.argv.includes('--online')})));
+if(process.argv[1]===fileURLToPath(import.meta.url)) {
+ if(process.env.SALESPILOT_CREDENTIAL_INPUT==='stdin') {
+  const input=createInterface({input:process.stdin});
+  for await(const line of input){credentialBootstrapLine(line);break;}
+  input.close();
+ }
+ console.log(JSON.stringify(await readiness({online:process.argv.includes('--online')})));
+}
