@@ -2,9 +2,9 @@
 
 Internal Mac discovery assistant for Solutions Engineers. SalesPilot transcribes a call locally, suggests contextual follow-up questions, tracks discovery-framework evidence, collects notes and retrieves sourced product or competitive answers. It is a development/pilot utility, not a Cisco-approved production deployment.
 
-## Roadmap and next presentation
+## Core platform roadmap
 
-The [complete roadmap](docs/ROADMAP.md) tracks presentation polish, customer-pilot acceptance and deployment gates with stable task IDs, priorities, criteria and dependencies. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
+The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across startup, capture, coaching, answers, recovery, history and deployment, with P1–P4 priorities and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for source findings. New feature work is parked. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
 
 ## Start here
 

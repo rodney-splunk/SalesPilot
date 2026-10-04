@@ -1,5 +1,3 @@
 # SalesPilot roadmap
 
-The maintained, contributor-ready roadmap is [docs/ROADMAP.md](docs/ROADMAP.md).
-
-It includes presentation, customer-pilot and deployment milestones; priorities, stable task IDs, status, acceptance criteria, dependencies and ownership rules. Presentation preparation is tracked in [docs/PRESENTATION.md](docs/PRESENTATION.md).
+The maintained plan is [docs/ROADMAP.md](docs/ROADMAP.md). It covers core-platform optimization across the complete lifecycle, with P1–P4 priorities, stable IDs, dependencies and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for code evidence. Previous plans and scoped acceptance records are in [roadmap history](docs/ROADMAP-HISTORY.md). No new features are in the active scope.
