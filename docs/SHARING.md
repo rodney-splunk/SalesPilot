@@ -1,5 +1,9 @@
-# Coworker handoff
+# Coworker installation and development handoff
 
-Invite the coworker’s verified GitHub username with write/developer access after the private repository exists. Share the private repository URL; she clones it, follows README and builds her own app. Her Mac permissions, models, Keychain credentials and provider authorization are separate. Do not share the current prebuilt app as standalone: it refers to Rodney’s workspace.
+Share [the private SalesPilot repository](https://github.com/rodney-splunk/SalesPilot) with Nilanjana and Jessey. Each needs an invitation to her verified GitHub username before cloning. Do not send credentials, call archives, local configuration or Rodney's installed app.
 
-To test without customer data she can use More → Show example. For real use she needs approved models/provider access, endpoint readiness and call consent. No published binary or public GitHub release is included. Broader app distribution requires a portable runtime packaging/signing design.
+Follow [First installation on a coworker Mac](../README.md#first-installation-on-a-coworker-mac) in the README. It covers repository access, Apple Silicon/macOS14.4+ capture support, prerequisite checks, clone/build, approved models, first-launch permissions, fictional demonstration, local/Cisco configuration, the separate Splunk docs connector, readiness, troubleshooting and safe updates.
+
+There is no standalone installer or portable approved binary yet. The development bundle points to its builder's clone; each coworker builds locally and keeps that clone at a stable path. GitHub permission, Cisco service authorization, Mac permissions and optional speaker/model artifacts are separate requirements. A second-Mac end-to-end setup has not been certified.
+
+For development, use [Contributing](../CONTRIBUTING.md) and the active [P1–P4 core optimization roadmap](ROADMAP.md). Claim an item, use isolated fictional tests and coordinate shared engine/native changes. No new features or dormant integration activation in this scope. Presentation scripts remain outside GitHub.

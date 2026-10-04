@@ -12,6 +12,113 @@ The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across
 - **Developing it:** read Architecture and Development, run the safe checks, then create a feature branch.
 - **Real calls:** complete **More → Before you join**, obtain the required authorization and participant consent, and choose the processing mode deliberately.
 
+## First installation on a coworker Mac
+
+Nilanjana and Jessey should each follow these steps on their own Mac. The current distribution is **build from source**; there is no standalone installer yet. Share [the private repository](https://github.com/rodney-splunk/SalesPilot), not Rodney's installed app or local workspace.
+
+### 1 Get repository access
+
+Sign into GitHub with the account that has been invited to the private repository. If the link shows 404 or cloning says repository not found, check that account and ask the maintainer to grant access to your verified username. GitHub access does not grant Cisco provider or documentation access.
+
+After prerequisites below are installed, clone once into a stable folder:
+
+```sh
+mkdir -p "$HOME/Developer"
+git clone https://github.com/rodney-splunk/SalesPilot.git "$HOME/Developer/SalesPilot"
+cd "$HOME/Developer/SalesPilot"
+```
+
+Use your organization's approved GitHub sign-in method. Do not put a GitHub token into the clone URL. If you already cloned the repository, use that existing folder instead of creating another copy.
+
+### 2 Check the Mac and tools
+
+Use Apple Silicon and **macOS 14.4 or later for customer system-audio capture**. macOS 13 is the package minimum, not full-call capture support. Check **Apple menu → About This Mac** for chip and OS. Install the prerequisites in Requirements through the approved process, then verify:
+
+```sh
+xcode-select -p
+swift --version
+node --version
+python3 --version
+command -v whisper-cli
+command -v whisper-server
+```
+
+Node must be 22 or later. The app searches Homebrew's `/opt/homebrew/bin` and `/usr/local/bin` locations for Node and Whisper, so a tool available only through a terminal version manager may not be found by the app. Whisper CLI is required; the resident server improves repeated transcription and is recommended. There is no `npm install` step. Full Xcode may be needed if the installed Command Line Tools SDK cannot compile SwiftUI.
+
+### 3 Build the app
+
+From the clone root, with SalesPilot quit and no call being captured:
+
+```sh
+bash open-wispr/package.sh
+```
+
+Expected final output includes `Built:` and your `~/Applications/SalesPilot.app` path. The package script replaces that destination; it does not create a portable installer. Keep the clone at this location because the app embeds its runtime workspace path. It must be rebuilt if you move the clone.
+
+### 4 Prepare transcription models
+
+Provision approved Whisper model files as described in Local transcription and models. For English calls, the current live path prefers `small.en` and the final pass prefers `medium.en`, then `large-v3-turbo`, then the available live model. First launch also checks the configured default model. Missing models can trigger a download; models are not included in Git.
+
+If your approved process allows the bundled downloader, these supported commands install models into the inherited model folder:
+
+```sh
+"$HOME/Applications/SalesPilot.app/Contents/MacOS/SalesPilot" download-model small.en
+"$HOME/Applications/SalesPilot.app/Contents/MacOS/SalesPilot" download-model medium.en
+"$HOME/Applications/SalesPilot.app/Contents/MacOS/SalesPilot" set-model small.en
+```
+
+The current downloader reads the upstream model repository and checks file format, not a pinned approved hash. Use an approved artifact source and verify its license/hash for customer use; these commands do not establish organizational approval. Downloads can take time. Do not run them during a customer call.
+
+### 5 Launch and complete first-use permissions
+
+```sh
+open "$HOME/Applications/SalesPilot.app"
+```
+
+SalesPilot runs as a menu-bar app, so look for its menu-bar icon if no Dock icon is visible. Open its workspace. Complete the requested **Microphone**, **Accessibility** and, when system capture is started, **audio capture** permissions. Accessibility is still a startup dependency inherited from dictation/clipboard behavior; separating it from live calls is tracked in CORE-12. If setup appears stuck waiting for Accessibility, use **System Settings → Privacy & Security → Accessibility**, approve the locally built app through the allowed device process, and retry when no call is active. Managed-device restrictions require the endpoint support process.
+
+Do not disable Gatekeeper or other endpoint protections if macOS blocks the development build. Signing/notarized distribution is still an open release gate. Follow the approved development-signing/support process.
+
+Choose a call mode in onboarding. Open **More → Show example** for a fictional walkthrough; use **Exit example** afterward. The example needs no Cisco credentials or actual call recording, but it does not bypass native first-launch prerequisites. **More → Quick guide** reopens the guide.
+
+### 6 Choose how actual calls will be processed
+
+| Path | What to configure | Expected behavior |
+| --- | --- | --- |
+| Fictional UI example | Native build and startup prerequisites | Curated data; no live capture or model-quality test |
+| Local-only coaching | Approved running Ollama and required installed local models | Local ASR/coaching; public documentation and hosted calls blocked; local references optional |
+| Cisco coaching and docs | Your approved CIRCUIT registration/configuration, Keychain credentials, local Whisper models and separate docs connector | Local ASR; selected text can reach Cisco; sourced answers depend on readable evidence and connector/network availability |
+
+If your approved process permits Ollama, start its local service and provision `qwen2.5:14b` and `qwen2.5:7b` as described below. Confirm available models with `ollama list`; a running service with some other model is not proof the configured coaching models are installed. On Macs with insufficient resources, ask for an approved configuration rather than assuming the default models will perform well.
+
+For Cisco setup, follow Cisco CIRCUIT setup below. Obtain the non-secret configuration and authorization from the registration owner, provision your own secrets through the approved secure process, and run connection checks. Do not copy Rodney's Keychain or registration secrets.
+
+For real Splunk documentation retrieval, the current engine expects the existing Ghost Splunk docs MCP server at `~/.config/ghost/mcp-servers/dist/servers/splunk-docs/server.js`, or a documented `SALESPILOT_DOCS_SERVER` override passed to the engine environment. Ghost alone being installed does not prove this connector exists. Arrange the approved connector setup with the maintainer and check **More → Before you join**; run its connection checks for readable docs. Local reference imports remain an alternative, and public competitive-source reads have a separate path. A missing connector must remain visible as unavailable evidence.
+
+### 7 Confirm readiness before a real call
+
+- [ ] App launches and the fictional example opens/exits correctly.
+- [ ] **More → Before you join** reports the actual microphone/model/provider/documentation state. Read each result; a configured credential or installed model is not complete acceptance.
+- [ ] Optional speaker runtime status is understood; missing weights means channel-based attribution and manual review, not reliable multi-person identification.
+- [ ] Call context is saved for this customer, framework/mode chosen, and prior customer's context cleared.
+- [ ] Applicable approval and participant consent are in place; choose **Local only** or **Cisco + docs** deliberately at Start call.
+- [ ] In an authorized test, both microphone and customer audio are actually present. Then stop, inspect recap/history and confirm no active capture remains.
+
+A fresh second-Mac installation has **not yet been certified**. Report exact failed step, app/source version and sanitized error through the repository's bug template. Never attach real call content or credentials. This checklist guides installation; it does not replace the customer-pilot release gates.
+
+### Updating your copy
+
+End the call, wait for finalization and quit SalesPilot first. From your clone, preserve any local changes before updating; do not use a forced reset:
+
+```sh
+git status --short
+git pull --ff-only
+bash open-wispr/package.sh
+open "$HOME/Applications/SalesPilot.app"
+```
+
+If pull reports local conflicts/divergence, coordinate with the maintainer. Rebuilding can require permissions again if the signing identity changes. Never run two copies against the same workspace.
+
 ## Requirements
 
 The supported development target is an Apple Silicon Mac. The Swift package declares macOS 13+, but system call-audio capture requires a Mac/OS supporting Core Audio process taps; use the in-app readiness check rather than assuming minimum-version capture support. Intel and other OS configurations have not been certified.
@@ -75,7 +182,7 @@ Only approved Cisco authentication and inference hosts are enabled. Hosted model
 5. Start a call and select **Cisco + docs** or **Local only** at the consent checkpoint. The checkbox is an operator attestation, not proof of participant consent.
 6. **Coach** shows the next question and methodology coverage. Click a coverage point for its complete supporting evidence trail and remaining gap. Early, middle and late SPIN statements remain available to coaching. The transcript and compact window support following the conversation; hiding the transcript does not stop capture.
 7. **Notes** gathers customer statements with evidence. Review corrections and assumptions before using them.
-8. **Research** contains **Answers** and **Opportunities**. Answers combines technical and competitive responses; its menu filters All answers, Technical or Competitive. A competitive-answer arrow on Coach opens Answers with the Competitive filter. Competitor mentions produce neutral validation prompts; comparisons require readable evidence for both sides. Vendor explanations use separate paragraphs. Retrieved documentation is staged in call-scoped memory while the customer finishes adding scope; the latest context refines the same unresolved comparison, and superseded answers stay hidden. This is a short quiet-period gate, not a prediction of future speech. Search status lives with the answer; the next-question card stays a follow-up cue. Internal enablement links require your own Cisco access. Klue cards are currently linked resources; generated comparisons are documentation-backed, not automatically CI-approved talk tracks. A supported Klue Content API connection requires an approved integration key and audience/product-scope controls (CI-01 in the roadmap). Splunk Core is the initial positioning baseline; premium applications require an expressed need.
+8. **Research** contains **Answers** and **Opportunities**. Answers combines technical and competitive responses; its menu filters All answers, Technical or Competitive. A competitive-answer arrow on Coach opens Answers with the Competitive filter. Competitor mentions produce neutral validation prompts; comparisons require readable evidence for both sides. Vendor explanations use separate paragraphs. Retrieved documentation is staged in call-scoped memory while the customer finishes adding scope; the latest context refines the same unresolved comparison, and superseded answers stay hidden. This is a short quiet-period gate, not a prediction of future speech. Search status lives with the answer; the next-question card stays a follow-up cue. Internal enablement links require your own Cisco access. Klue cards are currently linked resources; generated comparisons are documentation-backed, not automatically CI-approved talk tracks. A supported Klue Content API connection requires an approved integration key and audience/product-scope controls; that feature is parked in the historical CI-01 plan during core optimization. Splunk Core is the initial positioning baseline; premium applications require an expressed need.
 9. Generated answers stay unresolved until delivered/marked answered or explicitly deferred. Unconfirmed answers offer Retry search during a live call; retry preserves the same question. Request failed differs from insufficient evidence. “Needs confirmation” means the evidence is insufficient; do not present it as verified.
 10. End capture when finished. Review the recap and unresolved questions; **More → Past calls** opens previous local calls. Exports are deliberate local actions, not automatic email/CRM sends.
 
