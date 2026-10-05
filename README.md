@@ -12,9 +12,9 @@ The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across
 - **Developing it:** read Architecture and Development, run the safe checks, then create a feature branch.
 - **Real calls:** complete **More → Before you join**, obtain the required authorization and participant consent, and choose the processing mode deliberately.
 
-## First installation on a coworker Mac
+## Install SalesPilot on your Mac
 
-Nilanjana and Jessey should each follow these steps on their own Mac. The current distribution is **build from source**; there is no standalone installer yet. Share [the private repository](https://github.com/rodney-splunk/SalesPilot), not Rodney's installed app or local workspace.
+Follow these steps to install and run SalesPilot on your Mac. The current distribution is **build from source**; there is no standalone installer yet. Start with [the private repository](https://github.com/rodney-splunk/SalesPilot) and build your own app using the instructions below.
 
 ### 1 Get repository access
 
@@ -91,7 +91,7 @@ Choose a call mode in onboarding. Open **More → Show example** for a fictional
 
 If your approved process permits Ollama, start its local service and provision `qwen2.5:14b` and `qwen2.5:7b` as described below. Confirm available models with `ollama list`; a running service with some other model is not proof the configured coaching models are installed. On Macs with insufficient resources, ask for an approved configuration rather than assuming the default models will perform well.
 
-For Cisco setup, follow Cisco CIRCUIT setup below. Obtain the non-secret configuration and authorization from the registration owner, provision your own secrets through the approved secure process, and run connection checks. Do not copy Rodney's Keychain or registration secrets.
+For Cisco setup, follow Cisco CIRCUIT setup below. Obtain the non-secret configuration and authorization from the registration owner, provision your own secrets through the approved secure process, and run connection checks. Use your own authorized credentials; do not copy another user's Keychain or registration secrets.
 
 For real Splunk documentation retrieval, the current engine expects the existing Ghost Splunk docs MCP server at `~/.config/ghost/mcp-servers/dist/servers/splunk-docs/server.js`, or a documented `SALESPILOT_DOCS_SERVER` override passed to the engine environment. Ghost alone being installed does not prove this connector exists. Arrange the approved connector setup with the maintainer and check **More → Before you join**; run its connection checks for readable docs. Local reference imports remain an alternative, and public competitive-source reads have a separate path. A missing connector must remain visible as unavailable evidence.
 
