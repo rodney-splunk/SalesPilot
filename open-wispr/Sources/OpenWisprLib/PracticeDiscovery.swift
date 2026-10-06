@@ -2,6 +2,14 @@ import AppKit
 import SwiftUI
 import AVFoundation
 
+@MainActor final class PracticeMicrophoneMeter: ObservableObject {
+    @Published var level = 0.0
+}
+struct PracticeMicrophoneLevel: View {
+    @ObservedObject var meter: PracticeMicrophoneMeter
+    var body: some View { ProgressView(value: meter.level).tint(SalesPilotStyle.accent).accessibilityLabel("Microphone input level") }
+}
+
 /// Fictional practice owns its audio and session, never the global system-audio tap.
 @MainActor final class PracticeDiscovery: NSObject, ObservableObject, NSWindowDelegate {
     static let shared = PracticeDiscovery()
@@ -21,6 +29,8 @@ import AVFoundation
     private var handsFree: PracticeAudio?
     var microphoneAvailable: Bool { handsFree != nil }
     @Published private(set) var muted = false
+    let meter = PracticeMicrophoneMeter()
+    @Published private(set) var microphoneName = "System default microphone"
     private var sessionGeneration = UUID()
     private var player: AVAudioPlayer?
     private var conversation: [[String: String]] = []
@@ -97,6 +107,7 @@ import AVFoundation
                     guard granted else { self.busy = false; self.muted = true; self.failure = "Allow microphone access in macOS Settings, then end and restart practice. Watch a demo uses no microphone."; return }
                     guard let root = self.root else { throw CancellationError() }
                     let session = self.sessionGeneration
+                    self.microphoneName = AudioDeviceManager.listInputDevices().first(where: { $0.isDefault })?.name ?? "System default microphone"
                     let audio = PracticeAudio(root: root, began: { [weak self] in
                         Task { @MainActor in guard let self, self.active, self.sessionGeneration == session, !self.muted else { return }; self.speechBegan() }
                     }, ended: { [weak self] url, start, end in
@@ -106,6 +117,8 @@ import AVFoundation
                         }
                     }, failed: { [weak self] in
                         Task { @MainActor in guard let self, self.active, self.sessionGeneration == session else { return }; self.captureFailed(); self.failure = "Microphone capture stopped. End practice and check your audio device before restarting."; self.status = "Microphone unavailable." }
+                    }, level: { [weak self] db in
+                        Task { @MainActor in guard let self, self.active, self.sessionGeneration == session, !self.muted else { return }; self.meter.level = min(1, max(0, (db + 80) / 55)) }
                     })
                     self.handsFree = audio
                     do { try audio.start() } catch {
@@ -125,7 +138,7 @@ import AVFoundation
     private func handle(_ error: Error, epoch: UUID) {
         guard active, generation == epoch else { return }
         busy = false; recording = false; if !watching, handsFree != nil, !muted { handsFree?.interrupt() }
-        failure = (error as NSError).domain == "PracticeReply" ? "Dana couldn't reach the configured AI provider. Check Cisco access or your local model, then ask again." : "Practice could not complete that turn. Check audio/model access. End practice and restart if needed."; status = (error as NSError).domain == "PracticeReply" && handsFree == nil ? "Provider unavailable. End practice and check Cisco access before restarting." : watching ? "Demo interrupted. End practice to restart." : (handsFree == nil ? "Audio unavailable. End practice and check your microphone before restarting." : "Listening. Please try again.")
+        failure = (error as NSError).domain == "PracticeReply" ? "Dana couldn't reach the configured AI provider. If Cisco access needs reconnecting, end practice and use More → Privacy & local data → Connect Cisco." : "Practice could not complete that turn. Check audio/model access. End practice and restart if needed."; status = (error as NSError).domain == "PracticeReply" && handsFree == nil ? "Provider unavailable. End practice and check Cisco access before restarting." : watching ? "Demo interrupted. End practice to restart." : (handsFree == nil ? "Audio unavailable. End practice and check your microphone before restarting." : "Listening. Please try again.")
     }
     private func captureFailed() {
         generation = UUID(); task?.cancel(); task = nil
@@ -142,7 +155,7 @@ import AVFoundation
     }
     func toggleMute() {
         guard active, !watching, handsFree != nil else { return }
-        muted.toggle(); handsFree?.setMuted(muted)
+        muted.toggle(); meter.level = 0; handsFree?.setMuted(muted)
         if muted {
             generation = UUID(); task?.cancel(); task = nil
             if child?.isRunning == true { child?.terminate() }; child = nil
@@ -295,7 +308,7 @@ import AVFoundation
         inputTask?.cancel(); inputTask = nil
         if inputChild?.isRunning == true { inputChild?.terminate() }; inputChild = nil
         for (url, _, _) in inputQueue { try? FileManager.default.removeItem(at: url) }; inputQueue = []
-        handsFree?.stop(); handsFree = nil; muted = false; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
+        handsFree?.stop(); handsFree = nil; muted = false; meter.level = 0; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
         LiveCoach.shared.stop()
         active = false; recording = false; busy = false; watching = false; failure = nil
         LiveState.shared.listening = false; LiveState.shared.starting = false; LiveState.shared.turns = []; LiveState.shared.engineError = nil
@@ -333,6 +346,13 @@ struct PracticeDiscoveryView: View {
                 }
             } else {
                 Label(model.watching ? "Fictional audio demo" : "Interactive fictional practice", systemImage: "sparkles").foregroundStyle(SalesPilotStyle.accent)
+                if !model.watching {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Microphone: " + model.microphoneName).font(.caption).foregroundStyle(.secondary)
+                        PracticeMicrophoneLevel(meter: model.meter)
+                        Text(model.muted ? "Muted" : "The meter should move when you speak. Practice uses your Mac’s current system input.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Text(model.status).accessibilityLabel("Practice status: " + model.status)
                 HStack {
                     if !model.watching { Button(model.muted ? "Resume microphone" : "Mute microphone") { model.toggleMute() }.disabled(!model.microphoneAvailable) }

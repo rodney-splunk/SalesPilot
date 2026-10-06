@@ -10,18 +10,36 @@ public enum ProviderCredentials {
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
         return config["credential_store"] as? String == "macos-keychain"
     }
-    static func data(refresh: Bool = false) throws -> Data {
-        try sessionCache.read(refresh: refresh) { try readKeychain() }
+    static func data(refresh: Bool = false, allowInteraction: Bool = false) throws -> Data {
+        try sessionCache.read(refresh: refresh) { try readKeychain(allowInteraction: allowInteraction) }
     }
-    private static func readKeychain() throws -> Data {
+    private static func readKeychain(allowInteraction: Bool) throws -> Data {
+        // The legacy login keychain does not consistently honor per-query UI flags.
+        // Scope the process interaction policy to this serialized credential read.
+        var wasAllowed: DarwinBoolean = false
+        SecKeychainGetUserInteractionAllowed(&wasAllowed)
+        SecKeychainSetUserInteractionAllowed(allowInteraction)
+        defer { SecKeychainSetUserInteractionAllowed(wasAllowed.boolValue) }
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.salespilot.circuit", kSecAttrAccount as String: "credentials", kSecReturnData as String: true]
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess, let data = item as? Data,
               let value = try? JSONSerialization.jsonObject(with: data) as? [String: String],
               value["client_secret"] != nil, value["app_key"] != nil else {
-            throw NSError(domain: "SalesPilotCredential", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Cisco credentials are unavailable. Check SalesPilot access in macOS Keychain."])
+            throw NSError(domain: "SalesPilotCredential", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Cisco credentials are unavailable. Use Connect Cisco in Privacy & local data; automatic calls never request a password."])
         }
+        return data
+    }
+    /// Rebind only this app-specific item to the calling signed app. Never trust all apps.
+    /// Explicit user action only: macOS may require one authorization to update the ACL.
+    static func connect() throws -> Data {
+        let data = try self.data(refresh: true, allowInteraction: true)
+        var access: SecAccess?
+        let created = SecAccessCreate("SalesPilot Cisco credentials" as CFString, nil, &access)
+        guard created == errSecSuccess, let access else { throw NSError(domain: "SalesPilotCredentialAccess", code: Int(created)) }
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.salespilot.circuit", kSecAttrAccount as String: "credentials"]
+        let result = SecItemUpdate(query as CFDictionary, [kSecAttrAccess as String: access] as CFDictionary)
+        guard result == errSecSuccess else { throw NSError(domain: "SalesPilotCredentialAccess", code: Int(result)) }
         return data
     }
     // Private subprocess IPC. Caller captures stdout; never invoke in a logging terminal.
@@ -49,13 +67,14 @@ struct PrivacyControls: View {
                 Picker("Processing", selection: $mode) { Text("Cisco CIRCUIT + official docs").tag("circuit"); Text("Local only").tag("local") }.pickerStyle(.segmented).disabled(live.listening || live.starting || live.finishing)
                 Text(mode == "local" ? "Call text stays in local inference and references. Hosted AI, public doc queries and pricing-page retrieval are blocked. An installed local model is required. Explicit account preparation lookups are a separate action." : "Audio transcription stays on the Mac. Selected masked text may go to Cisco; product questions may query public documentation. Use only approved data and obtain required consent.").font(.callout).foregroundStyle(.secondary)
                 Text("The selection applies at the next call start. A processing choice is not Cisco policy approval.").font(.caption).foregroundStyle(.secondary)
-                Button(checking ? "Checking Keychain…" : "Check Cisco credential access") {
+                Button(checking ? "Connecting…" : "Connect Cisco / repair saved access") {
                     checking = true
                     DispatchQueue.global().async {
-                        let ok = (try? ProviderCredentials.data(refresh: true)) != nil
-                        DispatchQueue.main.async { checking = false; status = ok ? "SalesPilot can access its Cisco credentials in Keychain." : "Access unavailable. Allow only SalesPilot for its app-specific item in Keychain; do not allow all applications." }
+                        let ok = (try? ProviderCredentials.connect()) != nil
+                        DispatchQueue.main.async { checking = false; status = ok ? "Cisco connected. Saved access is restricted to SalesPilot; automatic calls do not open password dialogs." : "Could not connect. Unlock the login keychain and retry this explicit action. No automatic password requests will be made." }
                     }
-                }.disabled(checking)
+                }.disabled(checking || live.listening || live.starting || live.finishing)
+                Text("Only this Connect action can request macOS authorization. It repairs access for SalesPilot’s own Cisco item; credentials remain in Keychain.").font(.caption).foregroundStyle(.secondary)
                 Divider()
                 Text("LOCAL STORAGE").font(.caption.weight(.semibold)).foregroundStyle(SalesPilotStyle.accent)
                 Text(SessionCapture.sessionsDir.path).font(.caption.monospaced()).textSelection(.enabled)

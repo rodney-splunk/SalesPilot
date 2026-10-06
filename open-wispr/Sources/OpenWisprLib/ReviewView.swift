@@ -301,6 +301,7 @@ struct ReviewView: View {
                     }
                 } label: { Label("More", systemImage: "ellipsis.circle") }.fixedSize().help("Prepare call context, add knowledge, review a recap, check speaking insights or reopen the quick guide.")
                 if practice.active && !practice.watching {
+                    PracticeMicrophoneLevel(meter: practice.meter).frame(width: 45).help("Practice microphone input level")
                     Button { practice.toggleMute() } label: {
                         Image(systemName: practice.muted ? "mic.slash.fill" : "mic.fill")
                     }.help(practice.muted ? "Resume hands-free practice listening." : "Mute practice, discard unfinished speech and cancel the reply.")

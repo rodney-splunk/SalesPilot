@@ -21,7 +21,7 @@ final class PracticeTurnGateTests: XCTestCase {
     }
     func testPlaybackResidualDoesNotInterruptButSustainedVoiceDoes() {
         var gate = PracticeTurnGate()
-        for _ in 0..<20 { XCTAssertEqual(gate.ingest(db: -40, duration: 0.1, playback: true), .none) }
+        for _ in 0..<20 { XCTAssertEqual(gate.ingest(db: -60, duration: 0.1, playback: true), .none) }
         for _ in 0..<3 { XCTAssertEqual(gate.ingest(db: -20, duration: 0.1, playback: true), .none) }
         XCTAssertEqual(gate.ingest(db: -20, duration: 0.1, playback: true), .began)
     }
@@ -34,6 +34,15 @@ final class PracticeTurnGateTests: XCTestCase {
         gate.reset()
         XCTAssertFalse(gate.speaking)
         XCTAssertEqual(gate.ingest(db: -65, duration: 0.2, playback: false), .none)
+    }
+    func testQuietSpeechWithSyllableGaps() {
+        var gate = PracticeTurnGate()
+        var began = false
+        for _ in 0..<6 {
+            for _ in 0..<4 { if gate.ingest(db: -52, duration: 0.02, playback: false) == .began { began = true } }
+            for _ in 0..<3 { _ = gate.ingest(db: -80, duration: 0.02, playback: false) }
+        }
+        XCTAssertTrue(began)
     }
     func testInvalidMeterValuesCannotCreateSpeech() {
         var gate = PracticeTurnGate()

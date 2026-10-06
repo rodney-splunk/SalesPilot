@@ -20,7 +20,7 @@ for _ in 0..<12 { expect(gate.ingest(db: -65, duration: 0.1, playback: false), .
 expect(gate.ingest(db: -65, duration: 0.1, playback: false), .ended)
 precondition(!gate.speaking)
 gate.reset()
-for _ in 0..<20 { expect(gate.ingest(db: -40, duration: 0.1, playback: true), .none) }
+for _ in 0..<20 { expect(gate.ingest(db: -60, duration: 0.1, playback: true), .none) }
 for _ in 0..<3 { expect(gate.ingest(db: -20, duration: 0.1, playback: true), .none) }
 expect(gate.ingest(db: -20, duration: 0.1, playback: true), .began)
 gate.reset()
@@ -32,6 +32,25 @@ gate.reset()
 for level in [Double.nan, Double.infinity, -Double.infinity] { expect(gate.ingest(db: level, duration: 0.1, playback: false), .none) }
 expect(gate.ingest(db: -20, duration: -1, playback: false), .none)
 precondition(!gate.speaking)
+// Ordinary speech has short unvoiced gaps between syllables. Weak speech must
+// survive those gaps rather than requiring one uninterrupted loud vowel.
+gate.reset()
+var naturalStart = false
+for _ in 0..<6 {
+    for _ in 0..<4 { if gate.ingest(db: -52, duration: 0.02, playback: false) == .began { naturalStart = true } }
+    for _ in 0..<3 { _ = gate.ingest(db: -80, duration: 0.02, playback: false) }
+}
+precondition(naturalStart, "Quiet natural speech was missed")
+var naturalEnd = false
+for _ in 0..<70 { if gate.ingest(db: -80, duration: 0.02, playback: false) == .ended { naturalEnd = true } }
+precondition(naturalEnd)
+gate.reset()
+var quietInterrupt = false
+for _ in 0..<8 {
+    for _ in 0..<4 { if gate.ingest(db: -50, duration: 0.02, playback: true) == .began { quietInterrupt = true } }
+    for _ in 0..<3 { _ = gate.ingest(db: -80, duration: 0.02, playback: true) }
+}
+precondition(quietInterrupt, "Quiet interruption was missed")
 print("PASS: silence, transient noise, natural pauses, interruption onset, turn cap and reset")
 SWIFT
 swiftc "$ROOT/open-wispr/Sources/OpenWisprLib/PracticeTurnGate.swift" "$TASK_TMP/main.swift" -o "$TASK_TMP/check"

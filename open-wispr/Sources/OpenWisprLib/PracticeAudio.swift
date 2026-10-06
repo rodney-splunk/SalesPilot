@@ -25,8 +25,14 @@ final class PracticeAudio: @unchecked Sendable {
     private let began: @Sendable () -> Void
     private let ended: @Sendable (URL, Double, Double) -> Void
     private let failed: @Sendable () -> Void
-    init(root: URL, began: @escaping @Sendable () -> Void, ended: @escaping @Sendable (URL, Double, Double) -> Void, failed: @escaping @Sendable () -> Void) {
-        self.root = root; self.began = began; self.ended = ended; self.failed = failed
+    private let level: @Sendable (Double) -> Void
+    private var meterElapsed = 0.0
+    private var diagnosticElapsed = 0.0
+    private var bufferCount = 0
+    private var maximumDB = -120.0
+    private var detectedTurns = 0
+    init(root: URL, began: @escaping @Sendable () -> Void, ended: @escaping @Sendable (URL, Double, Double) -> Void, failed: @escaping @Sendable () -> Void, level: @escaping @Sendable (Double) -> Void) {
+        self.root = root; self.began = began; self.ended = ended; self.failed = failed; self.level = level
     }
     func start() throws {
         try engine.inputNode.setVoiceProcessingEnabled(true)
@@ -56,9 +62,24 @@ final class PracticeAudio: @unchecked Sendable {
     private func consume(_ buffer: AVAudioPCMBuffer) {
         guard enabled, !stopped, let samples = buffer.floatChannelData, buffer.frameLength > 0 else { return }
         let duration = Double(buffer.frameLength) / buffer.format.sampleRate
+        // Meter every channel: voice-processed and multichannel devices can put
+        // useful microphone data outside channel zero.
         var energy = 0.0
-        for i in 0..<Int(buffer.frameLength) { energy += Double(samples[0][i] * samples[0][i]) }
+        for channel in 0..<Int(buffer.format.channelCount) {
+            var channelEnergy = 0.0
+            for i in 0..<Int(buffer.frameLength) { channelEnergy += Double(samples[channel][i] * samples[channel][i]) }
+            energy = max(energy, channelEnergy)
+        }
         let db = 10 * log10(max(1e-12, energy / Double(buffer.frameLength)))
+        bufferCount += 1; maximumDB = max(maximumDB, db)
+        meterElapsed += duration; diagnosticElapsed += duration
+        if meterElapsed >= 0.10 { meterElapsed = 0; level(db) }
+        if diagnosticElapsed >= 5 {
+            diagnosticElapsed = 0
+            // Aggregate signal levels only; never raw audio, text, names or credentials.
+            let data: [String: Any] = ["buffers": bufferCount, "maximumDB": maximumDB, "detectedTurns": detectedTurns, "sampleRate": buffer.format.sampleRate, "channels": buffer.format.channelCount]
+            if let encoded = try? JSONSerialization.data(withJSONObject: data) { try? encoded.write(to: root.appendingPathComponent("microphone-health.json"), options: .atomic) }
+        }
         let wasSpeaking = gate.speaking
         let event = gate.ingest(db: db, duration: duration, playback: playing)
         do {
@@ -67,6 +88,7 @@ final class PracticeAudio: @unchecked Sendable {
                 while preRollDuration > 0.5, preRoll.count > 1 { preRollDuration -= Double(preRoll.removeFirst().frameLength) / buffer.format.sampleRate }
             }
             if event == .began {
+                detectedTurns += 1
                 let url = root.appendingPathComponent(UUID().uuidString + ".caf")
                 fileURL = url; file = try AVAudioFile(forWriting: url, settings: buffer.format.settings)
                 startedAt = Date().timeIntervalSince1970 - preRollDuration
