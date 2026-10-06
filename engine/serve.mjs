@@ -290,7 +290,7 @@ function extractIdentity(text, isMe) {
   //           honor it, but only fill an EMPTY slot and only when X passes isName (capitalized proper
   //           noun, not a stopword/role) — which rejects "I'm thinking / ready / sorry / going".
   //  greet  — the rep greeting them by name ("Hi Dana"): often the cleanest signal; fills if empty.
-  const strong = !isMe && text.match(/\b(?:my name'?s|my name is|this is)\s+([A-Za-z]+)(?:\s+([A-Za-z]+))?\b/i);
+  const strong = !isMe && text.match(/\b(?:my name'?s|my name is|this is)\s+(?:(?:actually|really)\s+)?([A-Za-z]+)(?:\s+([A-Za-z]+))?\b/i);
   const soft   = !isMe && text.match(/\bi(?:'?m| am)\s+([A-Za-z]+)(?:\s+([A-Za-z]+))?\b/i);
   const greet  = isMe  && text.match(/\b(?:hi|hey|hello|nice to meet you|great to meet you)[,!]?\s+([A-Za-z]+)\b/i);
   // badge — "Alec Williams, Director of Data Engineering": people introduce themselves this way

@@ -25,7 +25,8 @@ export function competitiveRequest(text,prior=[]) {
   if(context)named=competitors(context.text||context);
  }
  const compare=/\b(?:difference|differ\w*|compar\w*|versus|vs\.?|better|cheaper|more expensive|how.{0,20}stack|why.{0,20}splunk|advantage|disadvantage|instead of|rather than|alternative|replace|switch from)\b/i;
- if(!named.length || !question.test(text) || !compare.test(text))return null;
+ const capabilityContrast=/\b(?:that|which|but|whereas|while|unlike)\b/i.test(text) && /\bsplunk\b/i.test(text) && /\b(?:can|does|do|have|has|offer\w*|support\w*|use cases?|capabilit\w*|features?)\b/i.test(text) && /\b(?:doesn[’']t|don[’']t|cannot|can[’']t|not|lack\w*|unlike)\b/i.test(text);
+ if(!named.length || !question.test(text) || !(compare.test(text)||capabilityContrast))return null;
  return {category:'competition',competitors:named.map(c=>c.id),query:`Splunk Core versus ${named.map(c=>c.name).join(' and ')}: ${text}`,question:text};
 }
 export function competitorTechnicalRequest(text,prior=[]) {
