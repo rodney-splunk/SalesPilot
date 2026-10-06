@@ -49,7 +49,7 @@ final class LiveCoach {
         return (name, err, answer, sources, rosterCount, whoByText, cue?["q"] as? String, (cue?["reason"] as? String) ?? (cue?["tag"] as? String), (obj["liveAnswer"] as? [String: Any])?["status"] as? String)
     }
 
-    private static func nodePath() -> String? {
+    static func nodePath() -> String? {
         ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"]
             .first { FileManager.default.isExecutableFile(atPath: $0) }
     }
@@ -77,6 +77,11 @@ final class LiveCoach {
         environment["SALESPILOT_CALL_PROCESSING_MODE"] = UserDefaults.standard.string(forKey: "callProcessingMode") ?? "circuit"
         if environment["SALESPILOT_CALL_PROCESSING_MODE"] == "local" {
             environment["SALESPILOT_LOCAL_ONLY"] = "1"; environment["SALESPILOT_OFFLINE"] = "1"; environment["COACH_LOCAL"] = "1"; environment["PROVIDER"] = "ollama"
+        }
+        if WorkspacePaths.practiceRoot != nil {
+            environment["SESSION_FILE"] = WorkspacePaths.session.path
+            environment["PREP_FILE"] = SessionCapture.sessionsDir.appendingPathComponent("prep.txt").path
+            environment["SALESPILOT_PRACTICE"] = "1" // no customer reference reads/indexing
         }
         p.environment = environment
         let inPipe = Pipe(), outPipe = Pipe()

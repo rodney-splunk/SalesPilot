@@ -52,6 +52,23 @@ public enum WorkspacePreview {
         print("offline workspace: \(passed)/\(passed) passed")
     }
 
+    public static func verifyPracticeIsolation() throws {
+        guard ProcessInfo.processInfo.environment["SALESPILOT_ROOT"] != nil else { throw NSError(domain: "PracticeVerify", code: 1) }
+        let originalSession = WorkspacePaths.session, originalJournal = CaptureJournal.url
+        let marker = Data("original customer state".utf8)
+        try FileManager.default.createDirectory(at: originalSession.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try marker.write(to: originalSession)
+        let separate = WorkspacePaths.root.appendingPathComponent("practice-test")
+        WorkspacePaths.practiceRoot = separate
+        defer { WorkspacePaths.practiceRoot = nil }
+        try CaptureJournal.begin(); SessionCapture.startNewCall()
+        try CaptureJournal.append(speaker: "customer", text: "Fictional practice statement", startedAt: 1, endedAt: 2)
+        guard WorkspacePaths.session != originalSession, CaptureJournal.url != originalJournal,
+              SessionCapture.sessionsDir.path.hasPrefix(separate.path), try Data(contentsOf: originalSession) == marker,
+              !FileManager.default.fileExists(atPath: originalJournal.path) else { throw NSError(domain: "PracticeVerify", code: 2) }
+        print("PASS practice storage: distinct session, prep/log/journal paths, original customer state untouched")
+    }
+
     public static func verifyAudio(path: String) throws {
         guard ProcessInfo.processInfo.environment["SALESPILOT_ROOT"] != nil else { throw NSError(domain: "SalesPilotVerify", code: 4, userInfo: [NSLocalizedDescriptionKey: "An isolated workspace is required"]) }
         let model = Transcriber.modelExists(modelSize: "small.en") ? "small.en" : "base.en"
@@ -69,13 +86,15 @@ public enum WorkspacePreview {
         print("PASS actual local ASR: \(result.1.count) timed tokens, model \(model), \(Date().timeIntervalSince(start)) seconds; no audio device or network model used")
     }
 
-    public static func render(path: String, compact: Bool = false, prep: Bool = false, notes: Bool = false, section: String? = nil, knowledge: Bool = false, consent: Bool = false, privacy: Bool = false, example: Bool = false) throws {
+    public static func render(path: String, compact: Bool = false, prep: Bool = false, notes: Bool = false, section: String? = nil, knowledge: Bool = false, consent: Bool = false, privacy: Bool = false, example: Bool = false, practice: Bool = false) throws {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.prohibited)
-        let size = privacy ? NSSize(width: 720, height: 700) : consent ? NSSize(width: 630, height: 600) : knowledge ? NSSize(width: 680, height: 460) : prep ? NSSize(width: 720, height: 780) : compact ? NSSize(width: 380, height: 270) : NSSize(width: 1080, height: 740)
+        let size = practice ? NSSize(width: 540, height: 700) : privacy ? NSSize(width: 720, height: 700) : consent ? NSSize(width: 630, height: 600) : knowledge ? NSSize(width: 680, height: 460) : prep ? NSSize(width: 720, height: 780) : compact ? NSSize(width: 380, height: 270) : NSSize(width: 1080, height: 740)
         SessionStore.showingExample = example
         let host: NSView
-        if privacy {
+        if practice {
+            host = MainActor.assumeIsolated { NSHostingView(rootView: PracticeDiscoveryView(model: PracticeDiscovery.shared)) }
+        } else if privacy {
             host = NSHostingView(rootView: PrivacyControls())
         } else if consent {
             host = NSHostingView(rootView: CallConsent())

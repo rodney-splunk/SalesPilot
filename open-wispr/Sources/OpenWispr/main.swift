@@ -208,12 +208,15 @@ case "verify-audio-offline":
     guard args.count > 2 else { exit(1) }
     do { try WorkspacePreview.verifyAudio(path: args[2]) }
     catch { print("Audio verification failed: \(error)"); exit(1) }
+case "verify-practice-offline":
+    do { try WorkspacePreview.verifyPracticeIsolation() }
+    catch { print("Practice verification failed: \(error)"); exit(1) }
 case "verify-ui-offline":
     do { try WorkspacePreview.verifyOffline() }
     catch { print("UI verification failed: \(error)"); exit(1) }
 case "preview":
     guard args.count > 2 else { exit(1) }
-    do { try WorkspacePreview.render(path: args[2], compact: args.contains("--compact"), prep: args.contains("--prep"), notes: args.contains("--notes"), section: args.contains("--competition") ? "competition" : args.contains("--opportunities") ? "opportunities" : args.contains("--answers") ? "answers" : nil, knowledge: args.contains("--knowledge"), consent: args.contains("--consent"), privacy: args.contains("--privacy"), example: args.contains("--example")) }
+    do { try WorkspacePreview.render(path: args[2], compact: args.contains("--compact"), prep: args.contains("--prep"), notes: args.contains("--notes"), section: args.contains("--competition") ? "competition" : args.contains("--opportunities") ? "opportunities" : args.contains("--answers") ? "answers" : nil, knowledge: args.contains("--knowledge"), consent: args.contains("--consent"), privacy: args.contains("--privacy"), example: args.contains("--example"), practice: args.contains("--practice")) }
     catch { print("Preview failed: \(error)"); exit(1) }
 case "miccheck":
     let secs = args.count > 2 ? (Double(args[2]) ?? 20) : 20

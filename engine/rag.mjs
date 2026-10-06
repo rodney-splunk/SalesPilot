@@ -127,6 +127,7 @@ function loadIndex() {
 }
 
 export async function search(question, k = 3) {
+  if (process.env.SALESPILOT_PRACTICE === "1") return []; // fictional practice never reads customer reference indexes
   const idx = loadIndex();
   if (!idx || !idx.records || !idx.records.length) return [];
   let q;

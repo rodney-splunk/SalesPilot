@@ -145,10 +145,13 @@ final class LiveHUD {
     private var systemCapture: AnyObject?
     private var silenceWatchdog: Timer?
 
-    func toggle() { isRunning ? stop() : start() }
+    func toggle() {
+        if WorkspacePaths.practiceRoot != nil { stop(); return }
+        isRunning ? stop() : start()
+    }
 
     func start(consentConfirmed: Bool = false) {
-        guard !isRunning && !finishing else { return }
+        guard WorkspacePaths.practiceRoot == nil, !isRunning && !finishing else { return }
         if youT != nil || custT != nil || systemCapture != nil {
             stop()
             return
@@ -331,6 +334,7 @@ LiveCoach.shared.start(framework: Coaching.selectedID, mode: cueMode)   // persi
     }
 
     func stop() {
+        if WorkspacePaths.practiceRoot != nil { Task { @MainActor in PracticeDiscovery.shared.stop() }; return }
         guard !finishing else { return }
         if isRunning { ComplianceAudit.record("capture-stop-requested") }
         finishing = true

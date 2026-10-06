@@ -4,7 +4,7 @@ Internal Mac discovery assistant for Solutions Engineers. SalesPilot transcribes
 
 ## Core platform roadmap
 
-The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across startup, capture, coaching, answers, recovery, history and deployment, with P1–P4 priorities and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for source findings. New feature work is parked. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
+The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across startup, capture, coaching, answers, recovery, history and deployment, with P1–P4 priorities and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for source findings. Other new feature work is parked; Practice Discovery is an explicitly requested addition. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
 
 ## Start here
 
@@ -247,3 +247,14 @@ Customer-call readiness still requires natural multi-party/overlap acceptance, f
 
 
 To replay the fictional multi-minute audio through actual local ASR and verify whole-call SPIN memory, run `bash scripts/test-holistic-audio.sh` after building. The script writes speech to a file, uses an isolated workspace and leaves its fictional artifacts in a temporary directory. It requires ffmpeg and an installed local Whisper model; it does not open or change microphone/speaker devices. The safe suite includes a 282-turn context fixture and a real-engine layered comparison replay. Natural multivoice calls still require their own acceptance.
+
+## Practice Discovery
+
+Open **More → Practice Discovery** when no call is active. Confirm fictional-only use and review the current processing choice. Practice is separate from saved customer prep and live-call history.
+
+- **Interactive practice:** the fictional customer introduces herself. Click **Speak**, ask your question, then **Send turn**. Microphone capture is limited to 60 seconds per turn and disabled during playback/processing. The AI selects relevant, vetted responses from a bounded fictional customer scenario, rather than generating arbitrary customer facts.
+- **Watch a demo:** both fictional voices play automatically. No microphone capture is used. Transcription, coaching, notes and source retrieval run against the spoken scenario rather than a prefilled example card.
+
+Generated speech files are played and transcribed through the local Whisper path. This verifies audio-to-transcript processing, not system-audio capture from Webex or a production customer's accent/voice. macOS speech voices, Node, and an approved Whisper model are required. Interactive replies also need the selected Cisco/local inference setup. Local-only processing blocks hosted inference and public searches; source answers require the normal configured documentation transport when Cisco processing is selected. No customer reference library or saved prep is read in practice.
+
+Use **End practice** before returning to customer calls. Practice sessions are stored separately under `sessions/practice`; temporary audio is cleaned up after use. Treat your recorded practice speech according to organizational retention requirements and avoid real customer information. Interrupted or failed practice should be restarted; no automatic recap, export or customer action occurs. The current version is turn-based: barge-in and full-duplex voice practice are not supported.

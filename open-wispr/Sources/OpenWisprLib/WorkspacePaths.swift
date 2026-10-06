@@ -10,7 +10,9 @@ enum WorkspacePaths {
         }
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents/sales-copilot", isDirectory: true)
     }
-    static var session: URL { root.appendingPathComponent("sessions/latest.json") }
+    static var practiceRoot: URL?
+    static var dataRoot: URL { practiceRoot ?? root }
+    static var session: URL { dataRoot.appendingPathComponent("sessions/latest.json") }
     static var engine: URL { root.appendingPathComponent("engine", isDirectory: true) }
 }
 

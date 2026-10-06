@@ -259,7 +259,7 @@ struct ReviewView: View {
                 Image(systemName: "waveform.path").font(.system(size: 21, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("SalesPilot").font(.system(size: 20, weight: .semibold, design: .rounded))
-                    Text(showingExample ? "Fictional example" : live.finishing ? "Finishing your transcript" : (live.starting ? "Preparing your call" : (live.listening ? "Your discovery workspace" : session.turns.isEmpty ? "Ready for your next call" : "Call review")))
+                    Text(PracticeDiscovery.shared.active ? "Fictional practice" : showingExample ? "Fictional example" : live.finishing ? "Finishing your transcript" : (live.starting ? "Preparing your call" : (live.listening ? "Your discovery workspace" : session.turns.isEmpty ? "Ready for your next call" : "Call review")))
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -283,6 +283,7 @@ struct ReviewView: View {
                     Button("Review recap") { showRecap = true }
                     Button("Speaking insights") { showInsights = true }
                     Button("Quick guide") { showGuide = true }
+                    Button("Practice Discovery…") { PracticeDiscovery.shared.show() }.disabled(WorkspacePaths.practiceRoot == nil && (live.listening || live.starting || live.finishing))
                     Picker("Coaching detail", selection: $cueMode) {
                         Text("Full question").tag("autopilot")
                         Text("Short nudge").tag("nudge")
@@ -305,7 +306,7 @@ struct ReviewView: View {
                 Toggle(isOn: $showTranscript) { Label("Transcript", systemImage: "text.alignleft") }
                     .toggleStyle(.button).help(showTranscript ? "Hide the transcript for more coaching space. Speech capture continues while the call is live." : "Show the customer’s words beside Coach. The transcript opens automatically when you start a call.")
                 Button { LiveHUD.shared.toggle() } label: {
-                    Label(live.finishing ? "Finishing" : (live.listening ? "End call" : "Start call"), systemImage: live.listening ? "stop.fill" : "waveform")
+                    Label(live.finishing ? "Finishing" : (WorkspacePaths.practiceRoot != nil ? "End practice" : live.listening ? "End call" : "Start call"), systemImage: live.listening ? "stop.fill" : "waveform")
                 }.buttonStyle(.plain).help(live.listening ? "End capture and finish this call’s transcript and recap." : "Start microphone and call-audio capture with the selected framework and saved context. The transcript opens automatically.")
                     .padding(.horizontal, 13).padding(.vertical, 8)
                     .background(live.listening ? Color.orange : SalesPilotStyle.buttonFill, in: RoundedRectangle(cornerRadius: 8))

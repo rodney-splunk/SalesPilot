@@ -4,7 +4,7 @@ import Foundation
 enum CaptureJournal {
     private static let lock = NSLock()
     static var callID = UUID().uuidString
-    static var url: URL { WorkspacePaths.root.appendingPathComponent("sessions/capture-journal.jsonl") }
+    static var url: URL { WorkspacePaths.dataRoot.appendingPathComponent("sessions/capture-journal.jsonl") }
     static func begin() throws {
         lock.lock(); defer { lock.unlock() }
         callID = UUID().uuidString

@@ -1271,7 +1271,7 @@ writeSession(); // reset the review window to a clean live session immediately
 if (arg("prep-preview")) process.exit(0); // one-shot: just wrote the prep-prefilled session, done
 // Keep answers on the LATEST docs — but re-index in the BACKGROUND so it never freezes the coach at
 // call open. search() tolerates an old/missing index and hot-reloads when the rebuild lands.
-if (process.env.SALESPILOT_OFFLINE !== "1") indexIfStale().then((r) => { if (r.reindexed) console.error(`[serve] re-indexed ${r.chunks} chunks from ${r.files} files`); }).catch((e) => console.error(`[serve] reindex error: ${e.message}`));
+if (process.env.SALESPILOT_OFFLINE !== "1" && process.env.SALESPILOT_PRACTICE !== "1") indexIfStale().then((r) => { if (r.reindexed) console.error(`[serve] re-indexed ${r.chunks} chunks from ${r.files} files`); }).catch((e) => console.error(`[serve] reindex error: ${e.message}`));
 // Warm authentication without generating a dummy question or loading a local model.
 warmCoach().catch(() => {});
 const rl = createInterface({ input: process.stdin });

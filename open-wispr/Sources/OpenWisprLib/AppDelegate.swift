@@ -30,6 +30,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
+        if WorkspacePaths.practiceRoot != nil { MainActor.assumeIsolated { PracticeDiscovery.shared.stop() } }
         unregisterSleepWakeObservers()
     }
 

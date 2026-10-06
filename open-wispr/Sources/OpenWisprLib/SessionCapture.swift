@@ -7,7 +7,7 @@ import Foundation
 
 enum SessionCapture {
     static var sessionsDir: URL {
-        let dir = WorkspacePaths.root.appendingPathComponent("sessions", isDirectory: true)
+        let dir = WorkspacePaths.dataRoot.appendingPathComponent("sessions", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         return dir
