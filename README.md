@@ -4,7 +4,7 @@ Internal Mac discovery assistant for Solutions Engineers. SalesPilot transcribes
 
 ## Core platform roadmap
 
-The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across startup, capture, coaching, answers, recovery, history and deployment, with P1–P4 priorities and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for source findings. Other new feature work is parked; Practice Discovery is an explicitly requested addition. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
+The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across startup, capture, coaching, answers, recovery, history and deployment, with P1–P4 priorities and measurable acceptance. Read the [architecture review](docs/ARCHITECTURE-REVIEW.md) for source findings and [pilot readiness](docs/PILOT-READINESS.md) for current acceptance and owner decisions. Other new feature work is parked; Practice Discovery is an explicitly requested addition. Contributors should claim a scoped issue before parallel work; see [Contributing](CONTRIBUTING.md).
 
 ## Start here
 
