@@ -15,12 +15,14 @@ import AVFoundation
     private var generation = UUID()
     private var task: Task<Void, Never>?
     private var child: Process?
-    private var recorder: AVAudioRecorder?
+    private var inputChild: Process?
+    private var inputTask: Task<Void, Never>?
+    private var inputQueue: [(URL, Double, Double)] = []
+    private var handsFree: PracticeAudio?
+    var microphoneAvailable: Bool { handsFree != nil }
+    @Published private(set) var muted = false
+    private var sessionGeneration = UUID()
     private var player: AVAudioPlayer?
-    private var microphoneLimit: Timer?
-    private var audioURL: URL?
-    private var recordingStart = Date()
-    private var peakLevel: Float = -160
     private var conversation: [[String: String]] = []
     private var revealed: [String] = []
     private var root: URL?
@@ -57,7 +59,7 @@ import AVFoundation
             root = dir; WorkspacePaths.practiceRoot = dir
             try CaptureJournal.begin()
         } catch { WorkspacePaths.practiceRoot = nil; root = nil; failure = "Could not create an isolated practice session."; return }
-        generation = UUID(); active = true; watching = watch; busy = true; failure = nil; conversation = []; revealed = []
+        generation = UUID(); sessionGeneration = UUID(); muted = false; active = true; watching = watch; busy = true; failure = nil; conversation = []; revealed = []
         SessionStore.showingExample = false; SessionStore.reviewSelection = nil; SessionStore.showingReady = false
         LiveState.shared.turns = []; LiveState.shared.engineError = nil; LiveState.shared.listening = true
         LiveState.shared.customerName = nil; LiveState.shared.customerCount = 0; LiveState.shared.whoByText = [:]
@@ -65,12 +67,21 @@ import AVFoundation
         LiveState.shared.answer = nil; LiveState.shared.answerSources = nil; LiveState.shared.answerStatus = nil
         LiveState.shared.nextQuestion = nil; LiveState.shared.nextQuestionTarget = nil; LiveState.shared.audioNotice = nil; LiveState.shared.customerAvailable = true
         NotificationCenter.default.post(name: .clearSession, object: nil)
-        LiveCoach.shared.start(framework: Coaching.selectedID)
+        status = "Preparing practice…"
         ReviewWindow.shared.show()
         let epoch = generation
         task = Task { [weak self] in
             guard let self else { return }
             do {
+                // Authorize before starting the short coaching deadline. The app cache is
+                // then shared with the coach and customer through their private stdin pipes.
+                if self.processing != "local", ProviderCredentials.isConfigured {
+                    self.status = "Authorizing Cisco practice…"
+                    do { _ = try await Task.detached { try ProviderCredentials.data() }.value }
+                    catch { try self.check(epoch); throw NSError(domain: "PracticeReply", code: 1) }
+                    try self.check(epoch)
+                }
+                LiveCoach.shared.start(framework: Coaching.selectedID)
                 if watch {
                     for (side, text) in self.demo {
                         try self.check(epoch)
@@ -79,8 +90,32 @@ import AVFoundation
                     }
                     self.status = "Demo complete. Review the workspace, then end practice."; self.busy = false
                 } else {
+                    let granted = await withCheckedContinuation { continuation in
+                        AVCaptureDevice.requestAccess(for: .audio) { continuation.resume(returning: $0) }
+                    }
+                    try self.check(epoch)
+                    guard granted else { self.busy = false; self.muted = true; self.failure = "Allow microphone access in macOS Settings, then end and restart practice. Watch a demo uses no microphone."; return }
+                    guard let root = self.root else { throw CancellationError() }
+                    let session = self.sessionGeneration
+                    let audio = PracticeAudio(root: root, began: { [weak self] in
+                        Task { @MainActor in guard let self, self.active, self.sessionGeneration == session, !self.muted else { return }; self.speechBegan() }
+                    }, ended: { [weak self] url, start, end in
+                        Task { @MainActor in
+                            guard let self, self.active, self.sessionGeneration == session, !self.muted else { try? FileManager.default.removeItem(at: url); return }
+                            self.sendTurn(url: url, start: start, end: end)
+                        }
+                    }, failed: { [weak self] in
+                        Task { @MainActor in guard let self, self.active, self.sessionGeneration == session else { return }; self.captureFailed(); self.failure = "Microphone capture stopped. End practice and check your audio device before restarting."; self.status = "Microphone unavailable." }
+                    })
+                    self.handsFree = audio
+                    do { try audio.start() } catch {
+                        let e = error as NSError
+                        let diagnostic = "audio startup (" + audio.startupStage + "): " + e.domain + " " + String(e.code)
+                        try? diagnostic.write(to: root.appendingPathComponent("audio-diagnostic.txt"), atomically: true, encoding: .utf8)
+                        audio.stop(); self.handsFree = nil; self.muted = true; throw error
+                    }
                     try await self.speak(self.intro, side: "customer", epoch: epoch)
-                    self.revealed = ["intro"]; self.busy = false; self.status = "Your turn. Click Speak, ask a question, then Send turn."
+                    self.revealed = ["intro"]; self.busy = false; self.status = "Listening. Ask Dana a question naturally."
                 }
             } catch { self.handle(error, epoch: epoch) }
         }
@@ -89,67 +124,102 @@ import AVFoundation
     private func check(_ epoch: UUID) throws { if !active || generation != epoch || Task.isCancelled { throw CancellationError() } }
     private func handle(_ error: Error, epoch: UUID) {
         guard active, generation == epoch else { return }
-        busy = false; recording = false; failure = "Practice could not complete that turn. Check audio/model access. End practice and restart if needed."; status = watching ? "Demo interrupted. End practice to restart." : "Click Speak to try another turn."
+        busy = false; recording = false; if !watching, handsFree != nil, !muted { handsFree?.interrupt() }
+        failure = (error as NSError).domain == "PracticeReply" ? "Dana couldn't reach the configured AI provider. Check Cisco access or your local model, then ask again." : "Practice could not complete that turn. Check audio/model access. End practice and restart if needed."; status = (error as NSError).domain == "PracticeReply" && handsFree == nil ? "Provider unavailable. End practice and check Cisco access before restarting." : watching ? "Demo interrupted. End practice to restart." : (handsFree == nil ? "Audio unavailable. End practice and check your microphone before restarting." : "Listening. Please try again.")
     }
-    func beginTurn() {
-        guard active, !watching, !busy, !recording else { return }
-        failure = nil
-        let epoch = generation
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            Task { @MainActor in
-                guard self.active, self.generation == epoch, !self.busy, !self.recording else { return }
-                guard granted else { self.failure = "Microphone access is required for interactive practice. Watch a demo uses no microphone."; return }
-                do {
-                    let url = self.root!.appendingPathComponent(UUID().uuidString + ".wav")
-                    let settings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16000, AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false]
-                    let r = try AVAudioRecorder(url: url, settings: settings)
-                    guard r.record() else { throw NSError(domain: "PracticeAudio", code: 1) }
-                    r.isMeteringEnabled = true; self.peakLevel = -160
-                    self.recorder = r; self.audioURL = url; self.recordingStart = Date(); self.recording = true; self.status = "Listening to you. Click Send turn when finished."
-                    self.microphoneLimit = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in Task { @MainActor in
-                        guard self.recording else { return }; self.recorder?.updateMeters(); self.peakLevel = max(self.peakLevel, self.recorder?.peakPower(forChannel: 0) ?? -160)
-                        if Date().timeIntervalSince(self.recordingStart) >= 60 { self.sendTurn() }
-                    } }
-                } catch { self.handle(error, epoch: epoch) }
+    private func captureFailed() {
+        generation = UUID(); task?.cancel(); task = nil
+        if child?.isRunning == true { child?.terminate() }; child = nil
+        handsFree?.stop(); handsFree = nil; muted = true; busy = false; recording = false
+    }
+    private func speechBegan() {
+        guard active, !watching, !muted else { return }
+        // Invalidate the prior reply before touching playback: late provider/ASR results cannot speak.
+        generation = UUID(); task?.cancel(); task = nil
+        if child?.isRunning == true { child?.terminate() }; child = nil
+        handsFree?.interrupt()
+        busy = false; recording = true; failure = nil; status = "Listening to you…"
+    }
+    func toggleMute() {
+        guard active, !watching, handsFree != nil else { return }
+        muted.toggle(); handsFree?.setMuted(muted)
+        if muted {
+            generation = UUID(); task?.cancel(); task = nil
+            if child?.isRunning == true { child?.terminate() }; child = nil
+            handsFree?.interrupt(); recording = false; busy = false; status = "Microphone muted. Resume when ready."
+        } else { failure = nil; status = "Listening. Ask Dana a question naturally." }
+    }
+    private func sendTurn(url: URL, start: Double, end: Double) {
+        guard active, !watching, !muted else { try? FileManager.default.removeItem(at: url); return }
+        recording = false
+        guard inputQueue.count < 4 else {
+            try? FileManager.default.removeItem(at: url); toggleMute()
+            failure = "Practice is catching up. Resume your microphone after the current speech is processed."; return
+        }
+        inputQueue.append((url, start, end)); drainInput()
+    }
+    private func drainInput() {
+        guard inputTask == nil, !inputQueue.isEmpty else { return }
+        let (url, start, end) = inputQueue.removeFirst()
+        let session = sessionGeneration
+        busy = true
+        inputTask = Task {
+            let wav = url.deletingPathExtension().appendingPathExtension("wav")
+            defer { try? FileManager.default.removeItem(at: url); try? FileManager.default.removeItem(at: wav) }
+            do {
+                let convert = Process(); convert.executableURL = URL(fileURLWithPath: "/usr/bin/afconvert")
+                convert.arguments = ["-f", "WAVE", "-d", "LEI16@16000", "-c", "1", url.path, wav.path]
+                _ = try await execute(convert, epoch: session, input: true)
+                let text = try await transcribe(wav, epoch: session, input: true)
+                if !text.isEmpty {
+                    LiveState.shared.turns.append(LiveTurn(speaker: "you", text: text, startedAt: start))
+                    let voiceFile = wav.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".wav")
+                    try FileManager.default.copyItem(at: wav, to: voiceFile)
+                    LiveCoach.shared.feed(speaker: "you", text: text, wav: voiceFile.path, startedAt: start, endedAt: end)
+                    conversation.append(["role": "user", "text": text])
+                }
+                guard active, sessionGeneration == session else { return }
+                inputTask = nil
+                if !inputQueue.isEmpty { drainInput() }
+                else if !recording, !muted, !text.isEmpty { replyToCustomer() }
+                else { busy = false; if !muted { status = "Listening. Continue whenever you're ready." } }
+            } catch {
+                guard active, sessionGeneration == session else { return }
+                inputTask = nil; busy = false
+                failure = "That speech could not be transcribed. Please try again."; status = muted ? "Microphone muted." : "Listening. Please try again."
+                if !inputQueue.isEmpty { drainInput() }
             }
         }
     }
-    func sendTurn() {
-        guard active, recording, let url = audioURL else { return }
-        microphoneLimit?.invalidate(); microphoneLimit = nil
-        recorder?.updateMeters(); peakLevel = max(peakLevel, recorder?.peakPower(forChannel: 0) ?? -160)
-        recorder?.stop(); recorder = nil; recording = false
-        guard peakLevel > -45 else { try? FileManager.default.removeItem(at: url); failure = "No clear microphone audio was detected. Check the input device and try again."; return }
-        busy = true
-        let epoch = generation, start = recordingStart.timeIntervalSince1970, end = Date().timeIntervalSince1970
+    private func replyToCustomer() {
+        let epoch = generation
+        busy = true; status = "Dana is thinking…"
         task = Task {
             do {
-                let text = try await transcribe(url, epoch: epoch)
-                guard text.split(separator: " ").count >= 2 else { failure = "No clear question was captured. Click Speak to try again."; busy = false; return }
-                try check(epoch)
-                LiveState.shared.turns.append(LiveTurn(speaker: "you", text: text, startedAt: start))
-                let voiceFile = url.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".wav")
-                try FileManager.default.copyItem(at: url, to: voiceFile)
-                LiveCoach.shared.feed(speaker: "you", text: text, wav: voiceFile.path, startedAt: start, endedAt: end)
-                conversation.append(["role": "user", "text": text]); status = "AI customer is thinking…"
-                let reply = try await customerReply(epoch: epoch)
-                try await speak(reply, side: "customer", epoch: epoch)
-                busy = false; status = "Your turn. Click Speak to continue."
+                let reply: (text: String, ids: [String])
+                do { reply = try await customerReply(epoch: epoch) }
+                catch { try check(epoch); throw NSError(domain: "PracticeReply", code: 1) }
+                try await speak(reply.text, side: "customer", epoch: epoch)
+                revealed += reply.ids
+                busy = false; status = "Listening. Continue whenever you're ready."
             } catch { handle(error, epoch: epoch) }
-            try? FileManager.default.removeItem(at: url)
         }
     }
-    private func transcribe(_ url: URL, epoch: UUID) async throws -> String {
+    private func transcribe(_ url: URL, epoch: UUID, input: Bool = false) async throws -> String {
         status = "Transcribing audio locally…"
         let size = modelSize
         let text = try await Task.detached(priority: .userInitiated) {
             try Transcriber(modelSize: size, language: "en", whisperPrompt: Transcriber.salesVocabulary + " Dana Reyes. Northstar.", threads: 4, beamSize: 5).transcribe(audioURL: url)
         }.value
-        try check(epoch); return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        try checkAudioEpoch(epoch, input: input); return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    private func execute(_ p: Process, epoch: UUID) async throws -> Data {
+    private func checkAudioEpoch(_ epoch: UUID, input: Bool) throws {
+        if input { guard active, sessionGeneration == epoch, !Task.isCancelled else { throw CancellationError() } }
+        else { try check(epoch) }
+    }
+    private func execute(_ p: Process, epoch: UUID, input: Bool = false) async throws -> Data {
         let output = Pipe(); p.standardOutput = output; p.standardError = FileHandle.nullDevice
-        child = p; try p.run()
+        if input { inputChild = p } else { child = p }; try p.run()
         let data = await withCheckedContinuation { (continuation: CheckedContinuation<Data, Never>) in
             DispatchQueue.global().async {
                 let deadline = DispatchWorkItem { if p.isRunning { p.terminate() } }
@@ -157,11 +227,11 @@ import AVFoundation
                 let data = output.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit(); deadline.cancel(); continuation.resume(returning: data)
             }
         }
-        try check(epoch); child = nil
+        try checkAudioEpoch(epoch, input: input); if input { inputChild = nil } else { child = nil }
         guard p.terminationStatus == 0 else { throw NSError(domain: "PracticeProcess", code: Int(p.terminationStatus)) }
         return data
     }
-    private func customerReply(epoch: UUID) async throws -> String {
+    private func customerReply(epoch: UUID) async throws -> (text: String, ids: [String]) {
         guard let node = LiveCoach.nodePath() else { throw NSError(domain: "PracticeNode", code: 1) }
         let p = Process(); p.executableURL = URL(fileURLWithPath: node); p.arguments = [WorkspacePaths.engine.appendingPathComponent("practice-customer.mjs").path]
         var env = ProcessInfo.processInfo.environment
@@ -182,7 +252,7 @@ import AVFoundation
         DispatchQueue.global().async { try? input.fileHandleForWriting.write(contentsOf: payload); try? input.fileHandleForWriting.close() }
         let data = try await execute(p, epoch: epoch)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any], let reply = object["text"] as? String, !reply.isEmpty else { throw NSError(domain: "PracticeReply", code: 1) }
-        revealed += object["ids"] as? [String] ?? []; return reply
+        return (reply, object["ids"] as? [String] ?? [])
     }
     private func speak(_ text: String, side: String, epoch: UUID) async throws {
         try check(epoch)
@@ -195,11 +265,21 @@ import AVFoundation
         _ = try await execute(say, epoch: epoch)
         let convert = Process(); convert.executableURL = URL(fileURLWithPath: "/usr/bin/afconvert"); convert.arguments = ["-f", "WAVE", "-d", "LEI16@16000", "-c", "1", aiff.path, wav.path]
         _ = try await execute(convert, epoch: epoch)
-        let audio = try AVAudioPlayer(contentsOf: wav); player = audio
-        guard audio.play() else { throw NSError(domain: "PracticePlayback", code: 1) }
+        let audio = try AVAudioPlayer(contentsOf: wav)
         let start = Date().timeIntervalSince1970
-        try await Task.sleep(nanoseconds: UInt64((audio.duration + 0.2) * 1_000_000_000))
-        try check(epoch); player = nil
+        if let handsFree, !watching {
+            let playback = try handsFree.play(wav)
+            while handsFree.isPlaying(playback) {
+                try await Task.sleep(nanoseconds: 50_000_000)
+                try check(epoch)
+            }
+            try check(epoch)
+        } else {
+            player = audio
+            guard audio.play() else { throw NSError(domain: "PracticePlayback", code: 1) }
+            try await Task.sleep(nanoseconds: UInt64((audio.duration + 0.2) * 1_000_000_000))
+            try check(epoch); player = nil
+        }
         let recognized = try await transcribe(wav, epoch: epoch)
         guard !recognized.isEmpty else { throw NSError(domain: "PracticeASR", code: 1) }
         // Generated audio goes through Whisper, never directly injected as a transcript.
@@ -211,14 +291,16 @@ import AVFoundation
     }
     func stop() {
         guard active else { return }
-        generation = UUID(); task?.cancel(); task = nil; microphoneLimit?.invalidate(); microphoneLimit = nil
-        recorder?.stop(); recorder = nil; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
+        generation = UUID(); sessionGeneration = UUID(); task?.cancel(); task = nil
+        inputTask?.cancel(); inputTask = nil
+        if inputChild?.isRunning == true { inputChild?.terminate() }; inputChild = nil
+        for (url, _, _) in inputQueue { try? FileManager.default.removeItem(at: url) }; inputQueue = []
+        handsFree?.stop(); handsFree = nil; muted = false; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
         LiveCoach.shared.stop()
-        if let url = audioURL { try? FileManager.default.removeItem(at: url) }; audioURL = nil
-        active = false; recording = false; busy = false; watching = false
-        LiveState.shared.listening = false; LiveState.shared.starting = false; LiveState.shared.turns = []
+        active = false; recording = false; busy = false; watching = false; failure = nil
+        LiveState.shared.listening = false; LiveState.shared.starting = false; LiveState.shared.turns = []; LiveState.shared.engineError = nil
         if let root, let files = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
-            for file in files where ["wav", "aiff"].contains(file.pathExtension) { try? FileManager.default.removeItem(at: file) }
+            for file in files where ["wav", "aiff", "caf"].contains(file.pathExtension) { try? FileManager.default.removeItem(at: file) }
         }
         WorkspacePaths.practiceRoot = nil; root = nil
         SessionStore.showingReady = true; SessionStore.reviewingLatest = false; status = "Practice ended. Customer call data is unchanged."
@@ -244,7 +326,7 @@ struct PracticeDiscoveryView: View {
                 Toggle("Use fictional information only. I understand the processing choice above.", isOn: $confirmed).font(.callout)
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Interactive practice") { model.start(watch: false) }.buttonStyle(.borderedProminent).tint(SalesPilotStyle.buttonFill).disabled(!confirmed)
-                    Text("You speak; Dana replies aloud. Click Speak to record your question, then Send turn. No microphone capture while Dana speaks.").font(.callout).foregroundStyle(.secondary)
+                    Text("Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
                     Divider().padding(.vertical, 6)
                     Button("Watch a demo") { model.start(watch: true) }.buttonStyle(.bordered).disabled(!confirmed)
                     Text("A prepared conversation plays both sides while SalesPilot transcribes, takes notes and coaches. No microphone capture.").font(.callout).foregroundStyle(.secondary)
@@ -253,7 +335,7 @@ struct PracticeDiscoveryView: View {
                 Label(model.watching ? "Fictional audio demo" : "Interactive fictional practice", systemImage: "sparkles").foregroundStyle(SalesPilotStyle.accent)
                 Text(model.status).accessibilityLabel("Practice status: " + model.status)
                 HStack {
-                    if !model.watching { Button(model.recording ? "Send turn" : "Speak") { model.recording ? model.sendTurn() : model.beginTurn() }.disabled(model.busy) }
+                    if !model.watching { Button(model.muted ? "Resume microphone" : "Mute microphone") { model.toggleMute() }.disabled(!model.microphoneAvailable) }
                     Button("Open workspace") { ReviewWindow.shared.show() }
                     Spacer()
                     Button("End practice") { model.stop() }
@@ -262,9 +344,9 @@ struct PracticeDiscoveryView: View {
             if let error = model.failure { Text(error).foregroundStyle(.orange).textSelection(.enabled) }
             DisclosureGroup("Audio, privacy & saved practice") {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Speech is transcribed locally. Generated voices are played and their audio files are transcribed by Whisper; this does not test Webex system-audio capture. Interactive recording is limited to 60 seconds per turn. Use a headset for comfortable listening.")
+                    Text("Speech is transcribed locally. Generated voices are played and their audio files are transcribed by Whisper; this does not test Webex system-audio capture. Interactive practice uses voice-processed microphone audio, waits through brief pauses, and ends a turn after sustained silence or 60 seconds. Use a headset to reduce residual echo. Microphone capture continues during replies to detect interruptions.")
                     Text("Practice uses separate files and no saved customer prep or reference library. The AI selects from a bounded fictional scenario and cannot read coaching suggestions. Results depend on your configured models and available sources.")
-                    Text("Practice files stay under sessions/practice for local review and follow organizational retention requirements. Temporary audio is removed after use. End practice before a customer call; closing this window ends practice. Full-duplex interruption is not supported.")
+                    Text("Practice files stay under sessions/practice for local review and follow organizational retention requirements. Temporary audio is removed after use. End practice before a customer call; closing this window ends practice. Interrupting stops the reply; only completed customer replies are included in the transcript. Mute cancels the current reply and discards unfinished microphone audio.")
                 }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.font(.callout)
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading) }

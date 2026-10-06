@@ -181,6 +181,7 @@ struct ReviewView: View {
     @State private var session = SessionStore.workspace()
     @State private var showingExample = SessionStore.showingExample
     @ObservedObject private var live = LiveState.shared
+    @ObservedObject private var practice = PracticeDiscovery.shared
     @State private var frameworkDisplay = Coaching.selectedName
     @State private var analyzing = false
     @State private var showGuide = false
@@ -299,6 +300,13 @@ struct ReviewView: View {
                         }
                     }
                 } label: { Label("More", systemImage: "ellipsis.circle") }.fixedSize().help("Prepare call context, add knowledge, review a recap, check speaking insights or reopen the quick guide.")
+                if practice.active && !practice.watching {
+                    Button { practice.toggleMute() } label: {
+                        Image(systemName: practice.muted ? "mic.slash.fill" : "mic.fill")
+                    }.help(practice.muted ? "Resume hands-free practice listening." : "Mute practice, discard unfinished speech and cancel the reply.")
+                        .accessibilityLabel(practice.muted ? "Resume practice microphone" : "Mute practice microphone")
+                        .disabled(!practice.microphoneAvailable)
+                }
                 if live.listening {
                     Button { LiveHUD.shared.showCompact() } label: { Image(systemName: "rectangle.compress.vertical") }
                         .help("Switch to compact view").accessibilityLabel("Compact view")
