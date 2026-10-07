@@ -198,3 +198,9 @@ CORE-16/19/26/27: practice now requests a mono voice-processed client format at 
 Packaging records tracked native/engine source hashes inside the signed app and verifies the signature. The read-only release-record helper reports the signed binary hash and detects drift in runtime engine sources (test/benchmark files are excluded from drift checks). This is build/source integrity evidence, not a full SBOM, model provenance, notarization or formal approval.
 
 Candidate validation: signed release build passed; 13/13 isolated native workspace checks and private practice-storage isolation passed. Endpoint/input regressions cover quiet syllables, interruptions, accepted-question plus trailing blank noise, exactly one reply, recording hold and mute/stop reset. Existing practice customer and engine-isolation suites passed. Installation/audio startup evidence follows separately.
+
+### Immediate practice repair — 2026-10-06
+
+Implemented: preserve pending questions across empty trailing transcription; invalidate in-flight input on mute; mono practice capture; show practice progress and errors in the workspace; signed source provenance and release verification.
+
+Keychain investigation found build-specific partition hashes despite a stable designated requirement. Updates now preserve the previously authorized signed app as an internal credential reader, validate its signing requirement before invoking it, and transfer credentials through a private pipe. No Keychain permissions are broadened. Fresh credential reading and installed interactive startup, microphone activity, mute, resume and stop passed. Human spoken-question recognition remains an acceptance gate. The preserved reader must be reviewed as part of signed release maintenance; replace it deliberately when credential code requires a security update.

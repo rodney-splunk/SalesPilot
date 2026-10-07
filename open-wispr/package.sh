@@ -25,6 +25,19 @@ echo "==> Building release binary… (SDK: $(basename "${SDKROOT:-default}"))"
 swift build -c release --disable-sandbox
 
 APP="${SALESPILOT_APP_PATH:-$HOME/Applications/SalesPilot.app}"
+# Preserve the already-authorized reader across development builds. Self-signed
+# login-keychain partitions can be build-hash-specific despite a stable DR.
+HELPER_SOURCE="${SALESPILOT_CREDENTIAL_HELPER_SOURCE:-$HOME/Applications/SalesPilot.app}"
+if [ -d "$HELPER_SOURCE/Contents/Helpers/CredentialAccess.app" ]; then
+  HELPER_SOURCE="$HELPER_SOURCE/Contents/Helpers/CredentialAccess.app"
+fi
+HELPER_STAGE=""
+if [ -d "$HELPER_SOURCE" ]; then
+  codesign --verify --deep --strict "$HELPER_SOURCE"
+  HELPER_STAGE=$(mktemp -d /private/tmp/salespilot-credential-reader.XXXXXX)
+  cp -R "$HELPER_SOURCE" "$HELPER_STAGE/CredentialAccess.app"
+fi
+trap '[ -z "$HELPER_STAGE" ] || rm -rf "$HELPER_STAGE"' EXIT
 # Refuse to replace a trusted installed identity with an ad-hoc update.
 SIGN_ID="SalesPilot Self-Signed"
 security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_ID" || SIGN_ID="-"
@@ -34,6 +47,10 @@ if [ -d "$APP" ] && [ "$SIGN_ID" = "-" ] && codesign -dv "$APP" 2>&1 | grep -q '
 fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+if [ -n "$HELPER_STAGE" ]; then
+  mkdir -p "$APP/Contents/Helpers"
+  cp -R "$HELPER_STAGE/CredentialAccess.app" "$APP/Contents/Helpers/"
+fi
 cp .build/release/open-wispr "$APP/Contents/MacOS/SalesPilot"
 chmod +x "$APP/Contents/MacOS/SalesPilot"
 
@@ -111,7 +128,8 @@ PY
 # Sign with the stable self-signed identity if present (so TCC permission grants survive rebuilds);
 # fall back to ad-hoc only if the cert isn't installed.
 echo "==> Code signing with: $SIGN_ID"
-codesign --force --deep --sign "$SIGN_ID" "$APP"
-codesign --verify --strict "$APP"
+# Do not re-sign the preserved credential reader: its authorized code hash is stable.
+codesign --force --sign "$SIGN_ID" "$APP"
+codesign --verify --deep --strict "$APP"
 codesign -dv "$APP" 2>&1 | grep -iE "Authority|Identifier" | head -2 || true
 echo "==> Built: $APP"

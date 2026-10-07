@@ -23,11 +23,40 @@ public enum ProviderCredentials {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.salespilot.circuit", kSecAttrAccount as String: "credentials", kSecReturnData as String: true]
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data,
+        if status != errSecSuccess, !allowInteraction,
+           ProcessInfo.processInfo.environment["SALESPILOT_DISABLE_CREDENTIAL_HELPER"] != "1",
+           let preserved = try? stableCredentialData() { item = preserved as CFData }
+        guard let data = item as? Data,
               let value = try? JSONSerialization.jsonObject(with: data) as? [String: String],
               value["client_secret"] != nil, value["app_key"] != nil else {
             throw NSError(domain: "SalesPilotCredential", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Cisco credentials are unavailable. Use Connect Cisco in Privacy & local data; automatic calls never request a password."])
         }
+        return data
+    }
+    private static func stableCredentialData() throws -> Data {
+        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/CredentialAccess.app")
+        var ownCode: SecStaticCode?, requirement: SecRequirement?, helperCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(Bundle.main.bundleURL as CFURL, [], &ownCode) == errSecSuccess, let ownCode,
+              SecCodeCopyDesignatedRequirement(ownCode, [], &requirement) == errSecSuccess,
+              let requirement,
+              SecStaticCodeCreateWithPath(helper as CFURL, [], &helperCode) == errSecSuccess,
+              let helperCode,
+              SecStaticCodeCheckValidity(helperCode, [], requirement) == errSecSuccess
+        else { throw NSError(domain: "SalesPilotCredentialHelper", code: 1) }
+        let process = Process(), output = Pipe()
+        process.executableURL = helper.appendingPathComponent("Contents/MacOS/SalesPilot")
+        process.arguments = ["provider-credentials"]
+        var environment = ProcessInfo.processInfo.environment
+        environment["SALESPILOT_DISABLE_CREDENTIAL_HELPER"] = "1"
+        environment["SALESPILOT_ROOT"] = WorkspacePaths.root.path
+        process.environment = environment; process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 5, execute: timeout)
+        defer { timeout.cancel() }
+        let data = output.fileHandleForReading.readDataToEndOfFile(); process.waitUntilExit()
+        guard process.terminationStatus == 0, data.count <= 65536 else { throw NSError(domain: "SalesPilotCredentialHelper", code: 2) }
         return data
     }
     /// Rebind only this app-specific item to the calling signed app. Never trust all apps.

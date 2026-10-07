@@ -24,7 +24,7 @@ for name, expected in manifest["sourceFiles"].items():
         actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
         if actual != expected:
             drift.append(name)
-verification = subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)],
+verification = subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)],
                               capture_output=True)
 print(json.dumps({"schemaVersion": 1, "sourceRevision": manifest["sourceRevision"],
                   "sourceModified": manifest["sourceModified"],
