@@ -367,7 +367,7 @@ struct PracticeDiscoveryView: View {
                 Toggle("Use fictional information only. I understand the processing choice above.", isOn: $confirmed).font(.callout)
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Interactive practice") { model.start(watch: false) }.buttonStyle(.borderedProminent).tint(SalesPilotStyle.buttonFill).disabled(!confirmed)
-                    Text("You play the SE; Dana is an AI-generated fictional customer. Alan can watch without role-playing. Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
+                    Text("You play the SE; Dana is an AI-generated fictional customer. Your audience can watch without role-playing. Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
                     Divider().padding(.vertical, 6)
                     Button("Watch a demo") { model.start(watch: true) }.buttonStyle(.bordered).disabled(!confirmed)
                     Text("Present one fictional discovery story: technical pain, business risk, personal impact and a desired outcome. Generated voices are transcribed live; pause between turns to discuss the coaching and notes. This does not test your microphone or meeting-audio capture.").font(.callout).foregroundStyle(.secondary)
