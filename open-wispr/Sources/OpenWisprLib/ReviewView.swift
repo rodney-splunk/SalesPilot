@@ -325,6 +325,7 @@ struct ReviewView: View {
             Divider()
             if practice.active {
                 VStack(alignment: .leading, spacing: 5) {
+                    if practice.watching { Button(practice.demoPaused ? "Resume demo" : "Pause after this turn") { practice.toggleDemoPause() }.disabled(practice.demoComplete) }
                     Label(practice.status, systemImage: practice.muted ? "mic.slash" : "waveform")
                         .font(.callout).fixedSize(horizontal: false, vertical: true)
                     if let failure = practice.failure {

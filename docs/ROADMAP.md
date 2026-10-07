@@ -212,3 +212,5 @@ Prepared eight-turn synthetic audio run completed with notes, contextual questio
 ### Continued discovery hardening — 2026-10-06
 
 CORE-08: recognize literal team overtime and customer-stated desired outcomes as partial evidence; suppress implication matches in sentences denying impact, while preserving separate affirmative sentences. CORE-19/27: practice overload explicitly reports discarded unfinished audio and asks for a repeat; it no longer suggests canceled transcription is still processing. Added direct negative cases and whole-call state verification. Actual human speech acceptance remains pending.
+
+Leadership demonstration controls: prepared audio can pause between complete turns and resume from the same place, in the workspace or practice panel. Current playback/transcription finishes before the pause; End practice cancels the wait. Completed demos cannot resume. Setup copy distinguishes generated voices, interactive microphone practice and meeting capture. Remote Webex audio acceptance and video fallback remain pending.

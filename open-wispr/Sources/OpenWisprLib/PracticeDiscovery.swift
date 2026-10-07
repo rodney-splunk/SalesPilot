@@ -19,6 +19,8 @@ struct PracticeMicrophoneLevel: View {
     @Published private(set) var status = "Choose a practice option."
     @Published private(set) var failure: String?
     @Published private(set) var watching = false
+    @Published private(set) var demoPaused = false
+    @Published private(set) var demoComplete = false
     private var window: NSWindow?
     private var generation = UUID()
     private var task: Task<Void, Never>?
@@ -59,9 +61,14 @@ struct PracticeMicrophoneLevel: View {
         window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     nonisolated func windowWillClose(_ notification: Notification) { Task { @MainActor in self.stop() } }
+    func toggleDemoPause() {
+        guard active, watching, !demoComplete else { return }
+        demoPaused.toggle()
+    }
     func start(watch: Bool) {
         guard !active, !LiveState.shared.listening, !LiveState.shared.starting, !LiveState.shared.finishing else { failure = "End the current call before starting practice."; return }
         guard LiveCoach.nodePath() != nil, Transcriber.findModel(modelSize: modelSize) != nil else { failure = "Install Node and an approved Whisper transcription model before practice."; return }
+        demoPaused = false; demoComplete = false
         processing = UserDefaults.standard.string(forKey: "callProcessingMode") ?? "circuit"
         do {
             let dir = WorkspacePaths.root.appendingPathComponent("sessions/practice/" + UUID().uuidString, isDirectory: true)
@@ -97,9 +104,15 @@ struct PracticeMicrophoneLevel: View {
                 if watch {
                     for (side, text) in self.demo {
                         try self.check(epoch)
+                        while self.demoPaused {
+                            self.status = "Demo paused between turns. Review the workspace, then resume."
+                            try await Task.sleep(nanoseconds: 200_000_000)
+                            try self.check(epoch)
+                        }
                         try await self.speak(text, side: side, epoch: epoch)
                         try await Task.sleep(nanoseconds: 2_000_000_000)
                     }
+                    self.demoComplete = true; self.demoPaused = false
                     self.status = "Demo complete. Review the workspace, then end practice."; self.busy = false
                 } else {
                     let granted = await withCheckedContinuation { continuation in
@@ -324,6 +337,7 @@ struct PracticeMicrophoneLevel: View {
         generation = UUID(); sessionGeneration = UUID(); cancelInput(); task?.cancel(); task = nil
         handsFree?.stop(); handsFree = nil; muted = false; meter.level = 0; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
         LiveCoach.shared.stop()
+        demoPaused = false; demoComplete = false
         active = false; recording = false; busy = false; watching = false; failure = nil
         LiveState.shared.listening = false; LiveState.shared.starting = false; LiveState.shared.turns = []; LiveState.shared.engineError = nil
         if let root, let files = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
@@ -353,10 +367,10 @@ struct PracticeDiscoveryView: View {
                 Toggle("Use fictional information only. I understand the processing choice above.", isOn: $confirmed).font(.callout)
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Interactive practice") { model.start(watch: false) }.buttonStyle(.borderedProminent).tint(SalesPilotStyle.buttonFill).disabled(!confirmed)
-                    Text("Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
+                    Text("You play the SE; Dana is an AI-generated fictional customer. Alan can watch without role-playing. Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
                     Divider().padding(.vertical, 6)
                     Button("Watch a demo") { model.start(watch: true) }.buttonStyle(.bordered).disabled(!confirmed)
-                    Text("A prepared conversation plays both sides while SalesPilot transcribes, takes notes and coaches. No microphone capture.").font(.callout).foregroundStyle(.secondary)
+                    Text("Present one fictional discovery story: technical pain, business risk, personal impact and a desired outcome. Generated voices are transcribed live; pause between turns to discuss the coaching and notes. This does not test your microphone or meeting-audio capture.").font(.callout).foregroundStyle(.secondary)
                 }
             } else {
                 Label(model.watching ? "Fictional audio demo" : "Interactive fictional practice", systemImage: "sparkles").foregroundStyle(SalesPilotStyle.accent)
@@ -369,6 +383,7 @@ struct PracticeDiscoveryView: View {
                 }
                 Text(model.status).accessibilityLabel("Practice status: " + model.status)
                 HStack {
+                    if model.watching { Button(model.demoPaused ? "Resume demo" : "Pause after this turn") { model.toggleDemoPause() }.disabled(model.demoComplete) }
                     if !model.watching { Button(model.muted ? "Resume microphone" : "Mute microphone") { model.toggleMute() }.disabled(!model.microphoneAvailable) }
                     Button("Open workspace") { ReviewWindow.shared.show() }
                     Spacer()
