@@ -3,7 +3,7 @@ import {fileURLToPath} from 'node:url';
 import {callQuality} from './core.mjs';
 import {credentialBootstrapLine} from './circuit.mjs';
 export const customerFacts = Object.freeze({
- intro:"Hi, I'm Dana Reyes. I lead security operations at the fictional company Northstar. Thanks for meeting with me.",
+ intro:"Hi, I'm Dana Reyes. I lead security operations at Northstar. Thanks for meeting with me.",
  environment:'We use Palo Alto firewalls and collect about forty five gigabytes of logs a day. Our analysts use several separate tools to investigate alerts.',
  workflow:'When an analyst needs firewall logs, we ask the network team to export them. We usually wait about six hours before we can continue the investigation.',
  problem:'The wait is our biggest problem. Analysts keep switching tools, and it is difficult to connect the evidence into one investigation.',

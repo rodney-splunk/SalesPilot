@@ -86,7 +86,7 @@ struct PracticeMicrophoneLevel: View {
             let dir = WorkspacePaths.root.appendingPathComponent("sessions/practice/" + UUID().uuidString, isDirectory: true)
             try FileManager.default.createDirectory(at: dir.appendingPathComponent("sessions"), withIntermediateDirectories: true)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
-            try "People: Dana Reyes — customer, security operations director\nContext: FICTIONAL PRACTICE ONLY. Northstar is invented. Do not use real customer information.\n".write(to: dir.appendingPathComponent("sessions/prep.txt"), atomically: true, encoding: .utf8)
+            try "People: Dana Reyes — customer, security operations director\nContext: DEMO PRACTICE ONLY. Northstar is invented. Do not use real customer information.\n".write(to: dir.appendingPathComponent("sessions/prep.txt"), atomically: true, encoding: .utf8)
             root = dir; WorkspacePaths.practiceRoot = dir
             try CaptureJournal.begin()
         } catch { WorkspacePaths.practiceRoot = nil; root = nil; failure = "Could not create an isolated practice session."; return }
@@ -407,7 +407,7 @@ struct PracticeDiscoveryView: View {
             DisclosureGroup("Audio, privacy & saved practice") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Speech is transcribed locally. Generated voices are played and their audio files are transcribed by Whisper; this does not test Webex system-audio capture. Interactive practice uses voice-processed microphone audio, waits through brief pauses, and ends a turn after sustained silence or 60 seconds. Use a headset to reduce residual echo. Microphone capture continues during replies to detect interruptions.")
-                    Text("Practice uses separate files and no saved customer prep or reference library. The AI selects from a bounded fictional scenario and cannot read coaching suggestions. Results depend on your configured models and available sources.")
+                    Text("Practice uses separate files and no saved customer prep or reference library. The AI selects from a bounded demo scenario and cannot read coaching suggestions. Results depend on your configured models and available sources.")
                     Text("Practice files stay under sessions/practice for local review and follow organizational retention requirements. Temporary audio is removed after use. End practice before a customer call; closing this window ends practice. Interrupting stops the reply; only completed customer replies are included in the transcript. Mute cancels the current reply and discards unfinished microphone audio.")
                 }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }.font(.callout)

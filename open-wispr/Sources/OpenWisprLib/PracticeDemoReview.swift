@@ -11,7 +11,7 @@ enum PracticeDemoReview {
             String(describing: value ?? "").replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "'", with: "&#39;")
         }
         let conversation = turns.map { turn in
-            let speaker = turn["me"] as? Bool == true ? "SE" : "Fictional customer"
+            let speaker = turn["me"] as? Bool == true ? "SE" : "Customer"
             let question = (turn["coachQ"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             return "<article><strong>" + speaker + "</strong><p>" + escape(turn["text"]) + "</p>" + (question.map { "<aside>Suggested follow-up: " + escape($0) + "</aside>" } ?? "") + "</article>"
         }.joined()
