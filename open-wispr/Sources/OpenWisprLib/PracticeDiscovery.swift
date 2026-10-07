@@ -61,6 +61,18 @@ struct PracticeMicrophoneLevel: View {
         window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     nonisolated func windowWillClose(_ notification: Notification) { Task { @MainActor in self.stop() } }
+    func saveDemoReview() {
+        guard active, watching, demoComplete, let root else { return }
+        do {
+            let html = try PracticeDemoReview.render(Data(contentsOf: root.appendingPathComponent("sessions/latest.json")))
+            let panel = NSSavePanel(); panel.allowedFileTypes = ["html"]
+            panel.nameFieldStringValue = "SalesPilot Fictional Demo Review.html"
+            panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            guard panel.runModal() == .OK, let destination = panel.url else { return }
+            try html.write(to: destination, atomically: true, encoding: .utf8)
+            failure = nil; status = "Demo review saved. It opens offline; source links need internet."
+        } catch { failure = error.localizedDescription }
+    }
     func toggleDemoPause() {
         guard active, watching, !demoComplete else { return }
         demoPaused.toggle()
@@ -383,6 +395,7 @@ struct PracticeDiscoveryView: View {
                 }
                 Text(model.status).accessibilityLabel("Practice status: " + model.status)
                 HStack {
+                    if model.watching && model.demoComplete { Button("Save demo review") { model.saveDemoReview() } }
                     if model.watching { Button(model.demoPaused ? "Resume demo" : "Pause after this turn") { model.toggleDemoPause() }.disabled(model.demoComplete) }
                     if !model.watching { Button(model.muted ? "Resume microphone" : "Mute microphone") { model.toggleMute() }.disabled(!model.microphoneAvailable) }
                     Button("Open workspace") { ReviewWindow.shared.show() }
