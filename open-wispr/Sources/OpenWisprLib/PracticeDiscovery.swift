@@ -171,7 +171,7 @@ struct PracticeMicrophoneLevel: View {
         recording = false
         guard inputQueue.count < 4 else {
             try? FileManager.default.removeItem(at: url); toggleMute()
-            failure = "Practice is catching up. Resume your microphone after the current speech is processed."; return
+            failure = "Speech arrived faster than practice could transcribe it. Your microphone is muted and unfinished audio was discarded. Resume and repeat your last question; earlier transcript is preserved."; return
         }
         inputQueue.append((url, start, end)); drainInput()
     }

@@ -208,3 +208,7 @@ Keychain investigation found build-specific partition hashes despite a stable de
 ### Leadership rehearsal — 2026-10-06
 
 Prepared eight-turn synthetic audio run completed with notes, contextual questions and a sourced product answer; cleanup and Ready state verified. CORE-08 partial evidence now recognizes explicitly stated response-target risk and team overtime. Targeted positive/negative fixtures and a 35-turn isolated engine replay passed. Human microphone recognition, true long-duration capture, second-Mac onboarding and formal pilot decisions remain open. Proposed bounded pilot measures and stop rules are in PILOT-READINESS.md; thresholds are proposals, not achieved results.
+
+### Continued discovery hardening — 2026-10-06
+
+CORE-08: recognize literal team overtime and customer-stated desired outcomes as partial evidence; suppress implication matches in sentences denying impact, while preserving separate affirmative sentences. CORE-19/27: practice overload explicitly reports discarded unfinished audio and asks for a repeat; it no longer suggests canceled transcription is still processing. Added direct negative cases and whole-call state verification. Actual human speech acceptance remains pending.
