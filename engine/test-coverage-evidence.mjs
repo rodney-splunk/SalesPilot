@@ -9,3 +9,11 @@ assert.deepEqual(partialEvidence([t(8,'For example, we want to maintain uptime.'
 assert.deepEqual(partialEvidence([t(9,'Do we have Wi-Fi routers?')]),{});
 assert.ok(partialEvidence([t(10,'The delay means we miss our triage SLA.')]).implication);
 console.log('PASS customer provenance, literal partial coverage, unknown impact, speaker exclusions and question/hypothetical safeguards');
+
+for (const text of ['The delays put our incident response target at risk.', 'My analysts sometimes work late to catch up.']) {
+ const result=partialEvidence([t(11,text)]);assert.equal(result.implication?.turnId,11);assert.equal(result.implication.quote,text);
+ assert.ok(!partialEvidence([t(11,text,'seller')]).implication);
+ assert.ok(!partialEvidence([t(11,'Hypothetically, '+text)]).implication);
+}
+for (const text of ['Our analysts do not work late.', 'The delays do not put our incident response target at risk.', 'Do your analysts sometimes work late?', 'We want to improve incident response targets.']) assert.ok(!partialEvidence([t(12,text)]).implication);
+console.log('PASS response-target risk and personal overtime are partial customer evidence; denials, questions and aspirations stay open');
