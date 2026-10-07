@@ -38,12 +38,15 @@ final class PracticeAudio: @unchecked Sendable {
         try engine.inputNode.setVoiceProcessingEnabled(true)
         guard engine.inputNode.isVoiceProcessingEnabled else { throw NSError(domain: "PracticeEcho", code: 1) }
         startupStage = "audio graph"
-        let format = engine.inputNode.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else { throw NSError(domain: "PracticeInput", code: 1) }
+        let deviceFormat = engine.inputNode.outputFormat(forBus: 0)
+        guard deviceFormat.sampleRate > 0, deviceFormat.channelCount > 0,
+              let format = AVAudioFormat(standardFormatWithSampleRate: deviceFormat.sampleRate, channels: 1)
+        else { throw NSError(domain: "PracticeInput", code: 1) }
         engine.attach(voice); engine.attach(silentInput)
         silentInput.outputVolume = 0
         // VoiceProcessingIO requires matching client input/output formats. Keep the I/O
-        // graph at microphone rate; the mixer resamples the 16 kHz fictional voice.
+        // graph at microphone rate with a mono client format. Do not average a
+        // device's extra input channels into the speech sent to transcription.
         engine.connect(engine.inputNode, to: silentInput, format: format)
         engine.connect(silentInput, to: engine.mainMixerNode, format: format)
         engine.connect(voice, to: engine.mainMixerNode, format: AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)!)

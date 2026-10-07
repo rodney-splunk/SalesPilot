@@ -95,9 +95,23 @@ $ICON_LINE
 </plist>
 PLIST
 
+# Record only tracked source hashes, never local configuration, customer data or credentials.
+python3 - "$WORKSPACE_ROOT" "$DIR/.." "$APP/Contents/Resources/build-manifest.json" <<'PY'
+import hashlib, json, pathlib, subprocess, sys
+runtime, source, output = map(pathlib.Path, sys.argv[1:])
+revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
+tracked = subprocess.check_output(['git', 'ls-files', '-z', 'engine', 'open-wispr/Sources'], cwd=source).decode().split('\0')
+files = {name: hashlib.sha256((source/name).read_bytes()).hexdigest() for name in tracked
+         if name and (source/name).is_file() and pathlib.Path(name).suffix in {'.swift', '.mjs', '.py'}}
+dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--', 'engine', 'open-wispr/Sources'], cwd=source))
+output.write_text(json.dumps({'schemaVersion': 1, 'sourceRevision': revision, 'sourceModified': dirty,
+                             'sourceFiles': files}, indent=2) + '\n')
+PY
+
 # Sign with the stable self-signed identity if present (so TCC permission grants survive rebuilds);
 # fall back to ad-hoc only if the cert isn't installed.
 echo "==> Code signing with: $SIGN_ID"
 codesign --force --deep --sign "$SIGN_ID" "$APP"
+codesign --verify --strict "$APP"
 codesign -dv "$APP" 2>&1 | grep -iE "Authority|Identifier" | head -2 || true
 echo "==> Built: $APP"

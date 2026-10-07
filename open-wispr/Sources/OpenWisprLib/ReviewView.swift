@@ -323,6 +323,17 @@ struct ReviewView: View {
                     .disabled(live.starting || live.finishing)
             }.padding(.horizontal, 24).padding(.vertical, 18)
             Divider()
+            if practice.active {
+                VStack(alignment: .leading, spacing: 5) {
+                    Label(practice.status, systemImage: practice.muted ? "mic.slash" : "waveform")
+                        .font(.callout).fixedSize(horizontal: false, vertical: true)
+                    if let failure = practice.failure {
+                        Text(failure).font(.callout).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24).padding(.vertical, 9)
+            }
             if showingExample {
                 HStack {
                     Label("Fictional demo", systemImage: "sparkles").fontWeight(.semibold)

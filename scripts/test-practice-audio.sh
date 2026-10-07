@@ -52,6 +52,20 @@ for _ in 0..<8 {
 }
 precondition(quietInterrupt, "Quiet interruption was missed")
 print("PASS: silence, transient noise, natural pauses, interruption onset, turn cap and reset")
+var progress = PracticeInputProgress()
+progress.accept("Dana, what happens while analysts wait?")
+precondition(!progress.takeReply(recording: false, muted: false, queued: true))
+progress.accept("   \n") // trailing noise must not drop the accepted question
+precondition(progress.takeReply(recording: false, muted: false, queued: false))
+precondition(!progress.takeReply(recording: false, muted: false, queued: false))
+progress.accept("How does that affect your team?")
+precondition(!progress.takeReply(recording: true, muted: false, queued: false))
+precondition(!progress.takeReply(recording: false, muted: true, queued: false))
+progress.reset() // mute/stop invalidates pending replies
+precondition(!progress.takeReply(recording: false, muted: false, queued: false))
+progress.accept("")
+precondition(!progress.takeReply(recording: false, muted: false, queued: false))
+print("PASS: accepted question survives queued noise, one reply, recording hold, mute/stop reset and blank-only input")
 SWIFT
-swiftc "$ROOT/open-wispr/Sources/OpenWisprLib/PracticeTurnGate.swift" "$TASK_TMP/main.swift" -o "$TASK_TMP/check"
+swiftc "$ROOT/open-wispr/Sources/OpenWisprLib/PracticeTurnGate.swift" "$ROOT/open-wispr/Sources/OpenWisprLib/PracticeInputProgress.swift" "$TASK_TMP/main.swift" -o "$TASK_TMP/check"
 "$TASK_TMP/check"

@@ -26,12 +26,14 @@ struct PracticeMicrophoneLevel: View {
     private var inputChild: Process?
     private var inputTask: Task<Void, Never>?
     private var inputQueue: [(URL, Double, Double)] = []
+    private var inputProgress = PracticeInputProgress()
     private var handsFree: PracticeAudio?
     var microphoneAvailable: Bool { handsFree != nil }
     @Published private(set) var muted = false
     let meter = PracticeMicrophoneMeter()
     @Published private(set) var microphoneName = "System default microphone"
     private var sessionGeneration = UUID()
+    private var inputGeneration = UUID()
     private var player: AVAudioPlayer?
     private var conversation: [[String: String]] = []
     private var revealed: [String] = []
@@ -69,7 +71,7 @@ struct PracticeMicrophoneLevel: View {
             root = dir; WorkspacePaths.practiceRoot = dir
             try CaptureJournal.begin()
         } catch { WorkspacePaths.practiceRoot = nil; root = nil; failure = "Could not create an isolated practice session."; return }
-        generation = UUID(); sessionGeneration = UUID(); muted = false; active = true; watching = watch; busy = true; failure = nil; conversation = []; revealed = []
+        generation = UUID(); sessionGeneration = UUID(); inputProgress.reset(); muted = false; active = true; watching = watch; busy = true; failure = nil; conversation = []; revealed = []
         SessionStore.showingExample = false; SessionStore.reviewSelection = nil; SessionStore.showingReady = false
         LiveState.shared.turns = []; LiveState.shared.engineError = nil; LiveState.shared.listening = true
         LiveState.shared.customerName = nil; LiveState.shared.customerCount = 0; LiveState.shared.whoByText = [:]
@@ -141,6 +143,7 @@ struct PracticeMicrophoneLevel: View {
         failure = (error as NSError).domain == "PracticeReply" ? "Dana couldn't reach the configured AI provider. If Cisco access needs reconnecting, end practice and use More → Privacy & local data → Connect Cisco." : "Practice could not complete that turn. Check audio/model access. End practice and restart if needed."; status = (error as NSError).domain == "PracticeReply" && handsFree == nil ? "Provider unavailable. End practice and check Cisco access before restarting." : watching ? "Demo interrupted. End practice to restart." : (handsFree == nil ? "Audio unavailable. End practice and check your microphone before restarting." : "Listening. Please try again.")
     }
     private func captureFailed() {
+        cancelInput()
         generation = UUID(); task?.cancel(); task = nil
         if child?.isRunning == true { child?.terminate() }; child = nil
         handsFree?.stop(); handsFree = nil; muted = true; busy = false; recording = false
@@ -157,6 +160,7 @@ struct PracticeMicrophoneLevel: View {
         guard active, !watching, handsFree != nil else { return }
         muted.toggle(); meter.level = 0; handsFree?.setMuted(muted)
         if muted {
+            cancelInput()
             generation = UUID(); task?.cancel(); task = nil
             if child?.isRunning == true { child?.terminate() }; child = nil
             handsFree?.interrupt(); recording = false; busy = false; status = "Microphone muted. Resume when ready."
@@ -174,7 +178,7 @@ struct PracticeMicrophoneLevel: View {
     private func drainInput() {
         guard inputTask == nil, !inputQueue.isEmpty else { return }
         let (url, start, end) = inputQueue.removeFirst()
-        let session = sessionGeneration
+        let session = inputGeneration
         busy = true
         inputTask = Task {
             let wav = url.deletingPathExtension().appendingPathExtension("wav")
@@ -185,21 +189,28 @@ struct PracticeMicrophoneLevel: View {
                 _ = try await execute(convert, epoch: session, input: true)
                 let text = try await transcribe(wav, epoch: session, input: true)
                 if !text.isEmpty {
+                    inputProgress.accept(text)
+                    failure = nil
                     LiveState.shared.turns.append(LiveTurn(speaker: "you", text: text, startedAt: start))
                     let voiceFile = wav.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".wav")
                     try FileManager.default.copyItem(at: wav, to: voiceFile)
                     LiveCoach.shared.feed(speaker: "you", text: text, wav: voiceFile.path, startedAt: start, endedAt: end)
                     conversation.append(["role": "user", "text": text])
                 }
-                guard active, sessionGeneration == session else { return }
+                guard active, inputGeneration == session else { return }
                 inputTask = nil
                 if !inputQueue.isEmpty { drainInput() }
-                else if !recording, !muted, !text.isEmpty { replyToCustomer() }
-                else { busy = false; if !muted { status = "Listening. Continue whenever you're ready." } }
+                else if inputProgress.takeReply(recording: recording, muted: muted, queued: false) { replyToCustomer() }
+                else {
+                    busy = false
+                    if !muted, !recording {
+                        status = text.isEmpty ? "Audio detected, but no clear words. Please repeat your question." : "Listening. Continue whenever you're ready."
+                    }
+                }
             } catch {
-                guard active, sessionGeneration == session else { return }
+                guard active, inputGeneration == session else { return }
                 inputTask = nil; busy = false
-                failure = "That speech could not be transcribed. Please try again."; status = muted ? "Microphone muted." : "Listening. Please try again."
+                failure = "That speech could not be transcribed. Please repeat your question; your earlier transcript is preserved."; status = muted ? "Microphone muted." : "Transcription failed. Please try again."
                 if !inputQueue.isEmpty { drainInput() }
             }
         }
@@ -227,7 +238,7 @@ struct PracticeMicrophoneLevel: View {
         try checkAudioEpoch(epoch, input: input); return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     private func checkAudioEpoch(_ epoch: UUID, input: Bool) throws {
-        if input { guard active, sessionGeneration == epoch, !Task.isCancelled else { throw CancellationError() } }
+        if input { guard active, inputGeneration == epoch, !muted, !Task.isCancelled else { throw CancellationError() } }
         else { try check(epoch) }
     }
     private func execute(_ p: Process, epoch: UUID, input: Bool = false) async throws -> Data {
@@ -302,12 +313,15 @@ struct PracticeMicrophoneLevel: View {
         LiveCoach.shared.feed(speaker: side, text: recognized, wav: voiceFile.path, startedAt: start, endedAt: start + audio.duration)
         conversation.append(["role": side == "customer" ? "assistant" : "user", "text": recognized])
     }
-    func stop() {
-        guard active else { return }
-        generation = UUID(); sessionGeneration = UUID(); task?.cancel(); task = nil
+    private func cancelInput() {
+        inputGeneration = UUID(); inputProgress.reset()
         inputTask?.cancel(); inputTask = nil
         if inputChild?.isRunning == true { inputChild?.terminate() }; inputChild = nil
         for (url, _, _) in inputQueue { try? FileManager.default.removeItem(at: url) }; inputQueue = []
+    }
+    func stop() {
+        guard active else { return }
+        generation = UUID(); sessionGeneration = UUID(); cancelInput(); task?.cancel(); task = nil
         handsFree?.stop(); handsFree = nil; muted = false; meter.level = 0; player?.stop(); player = nil; if child?.isRunning == true { child?.terminate() }; child = nil
         LiveCoach.shared.stop()
         active = false; recording = false; busy = false; watching = false; failure = nil

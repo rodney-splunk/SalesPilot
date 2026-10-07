@@ -264,3 +264,9 @@ Developers can run `bash scripts/test-practice-audio.sh` on macOS for microphone
 Practice microphone detection tolerates unvoiced gaps between syllables and quiet speech. The input meter and actual system microphone name are visible in Practice Discovery; the main workspace also shows the meter. Signal-only health counters are stored under the isolated practice folder, without transcript or audio.
 
 Automatic Cisco credential reads are noninteractive. If stored access needs repair, end capture and open **More → Privacy & local data → Connect Cisco / repair saved access**. Only this explicit action may request macOS authorization; it restricts the app-specific Cisco item to SalesPilot. Credentials remain in Keychain and the app-lifetime memory cache. A locked or inaccessible keychain produces a visible connection failure rather than repeated password dialogs.
+
+### Identify a review build
+
+New builds include a signed `Contents/Resources/build-manifest.json` with the source revision, modified-source flag and tracked native/engine hashes. Run `python3 scripts/release-record.py "$HOME/Applications/SalesPilot.app"` to report the actual binary hash, signature validity and runtime engine drift. Nonzero exit means the signature or runtime source check failed. Older apps without a manifest need rebuilding. This does not verify model licenses, formal approval or a complete dependency inventory.
+
+Interactive practice retains your accepted question if a later noise segment transcribes blank. Its current progress and errors appear in the main workspace. Muting cancels unfinished/queued transcription and pending output; already completed transcript turns remain. If audio contains no clear words, practice asks you to repeat rather than silently showing ordinary listening.
