@@ -260,7 +260,7 @@ struct ReviewView: View {
                 Image(systemName: "waveform.path").font(.system(size: 21, weight: .semibold)).foregroundStyle(SalesPilotStyle.accent)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("SalesPilot").font(.system(size: 20, weight: .semibold, design: .rounded))
-                    Text(PracticeDiscovery.shared.active ? "Fictional practice" : showingExample ? "Fictional example" : live.finishing ? "Finishing your transcript" : (live.starting ? "Preparing your call" : (live.listening ? "Your discovery workspace" : session.turns.isEmpty ? "Ready for your next call" : "Call review")))
+                    Text(PracticeDiscovery.shared.active ? "Practice" : showingExample ? "Demo example" : live.finishing ? "Finishing your transcript" : (live.starting ? "Preparing your call" : (live.listening ? "Your discovery workspace" : session.turns.isEmpty ? "Ready for your next call" : "Call review")))
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer()

@@ -41,7 +41,7 @@ struct PracticeMicrophoneLevel: View {
     private var revealed: [String] = []
     private var root: URL?
     private var processing = "local"
-    private let intro = "Hi, I'm Dana Reyes. I lead security operations at the fictional company Northstar. Thanks for meeting with me."
+    private let intro = "Hi, I'm Dana Reyes. I lead security operations at Northstar. Thanks for meeting with me."
     private let demo: [(String, String)] = [
         ("you", "Hi Dana, I'm Rodney White from Splunk. I'd like to understand your investigation workflow today. Could you walk me through what happens when an alert arrives?"),
         ("customer", "Hi, I'm Dana Reyes. I lead security operations at Northstar. We use Palo Alto firewalls and collect about forty five gigabytes of logs a day. When an analyst needs firewall evidence, we ask the network team to export it and usually wait six hours."),
@@ -66,7 +66,7 @@ struct PracticeMicrophoneLevel: View {
         do {
             let html = try PracticeDemoReview.render(Data(contentsOf: root.appendingPathComponent("sessions/latest.json")))
             let panel = NSSavePanel(); panel.allowedFileTypes = ["html"]
-            panel.nameFieldStringValue = "SalesPilot Fictional Demo Review.html"
+            panel.nameFieldStringValue = "SalesPilot Demo Review.html"
             panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             guard panel.runModal() == .OK, let destination = panel.url else { return }
             try html.write(to: destination, atomically: true, encoding: .utf8)
@@ -306,7 +306,7 @@ struct PracticeMicrophoneLevel: View {
     private func speak(_ text: String, side: String, epoch: UUID) async throws {
         try check(epoch)
         guard let root else { throw CancellationError() }
-        status = side == "customer" ? "Fictional customer is speaking…" : "Demo SE is speaking…"
+        status = side == "customer" ? "Customer is speaking…" : "Demo SE is speaking…"
         let base = root.appendingPathComponent(UUID().uuidString)
         let aiff = base.appendingPathExtension("aiff"), wav = base.appendingPathExtension("wav")
         defer { try? FileManager.default.removeItem(at: aiff); try? FileManager.default.removeItem(at: wav) }
@@ -370,22 +370,22 @@ struct PracticeDiscoveryView: View {
             Label("Practice Discovery", systemImage: "person.wave.2").font(.title2.bold())
             Text("Ask better questions. Follow the customer's story. See what you uncover.").font(.title3).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
-                Text("MEET YOUR FICTIONAL CUSTOMER").font(.caption.weight(.semibold)).foregroundStyle(SalesPilotStyle.accent)
+                Text("MEET YOUR CUSTOMER").font(.caption.weight(.semibold)).foregroundStyle(SalesPilotStyle.accent)
                 Text("Dana Reyes · Security operations leader").font(.headline)
                 Text("Her team waits for firewall evidence during investigations. Discover what that means for the business and the people doing the work.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(SalesPilotStyle.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
             Text(processing == "local" ? "Processing: Local only. An installed local model is needed for AI replies; public documentation searches are blocked." : "Processing: Cisco + docs. Practice text may reach your configured Cisco provider; product questions may query public documentation. Local model fallback may be used.").font(.callout)
             if !model.active {
-                Toggle("Use fictional information only. I understand the processing choice above.", isOn: $confirmed).font(.callout)
+                Toggle("Use demo information only. I understand the processing choice above.", isOn: $confirmed).font(.callout)
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Interactive practice") { model.start(watch: false) }.buttonStyle(.borderedProminent).tint(SalesPilotStyle.buttonFill).disabled(!confirmed)
-                    Text("You play the SE; Dana is an AI-generated fictional customer. Your audience can watch without role-playing. Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
+                    Text("You play the SE; Dana is an AI-generated customer. Your audience can watch without role-playing. Talk naturally; Dana replies after you finish. You can interrupt her. Your microphone stays active until you mute it or end practice. A headset is recommended.").font(.callout).foregroundStyle(.secondary)
                     Divider().padding(.vertical, 6)
                     Button("Watch a demo") { model.start(watch: true) }.buttonStyle(.bordered).disabled(!confirmed)
-                    Text("Present one fictional discovery story: technical pain, business risk, personal impact and a desired outcome. Generated voices are transcribed live; pause between turns to discuss the coaching and notes. This does not test your microphone or meeting-audio capture.").font(.callout).foregroundStyle(.secondary)
+                    Text("Present one discovery story: technical pain, business risk, personal impact and a desired outcome. Generated voices are transcribed live; pause between turns to discuss the coaching and notes. This does not test your microphone or meeting-audio capture.").font(.callout).foregroundStyle(.secondary)
                 }
             } else {
-                Label(model.watching ? "Fictional audio demo" : "Interactive fictional practice", systemImage: "sparkles").foregroundStyle(SalesPilotStyle.accent)
+                Label(model.watching ? "Audio demo" : "Interactive practice", systemImage: "sparkles").foregroundStyle(SalesPilotStyle.accent)
                 if !model.watching {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Microphone: " + model.microphoneName).font(.caption).foregroundStyle(.secondary)
