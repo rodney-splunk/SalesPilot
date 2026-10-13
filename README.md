@@ -67,11 +67,20 @@ bash open-wispr/package.sh
 
 Expected final output includes `Built:` and your `~/Applications/SalesPilot.app` path. The package script replaces that destination; it does not create a portable installer. Keep the clone at this location because the app embeds its runtime workspace path. It must be rebuilt if you move the clone.
 
-### 4 Prepare transcription models
+### 4 Download the local transcription models before your first call
 
-Provision approved Whisper model files as described in Local transcription and models. For English calls, the current live path prefers `small.en` and the final pass prefers `medium.en`, then `large-v3-turbo`, then the available live model. First launch also checks the configured default model. Missing models can trigger a download; models are not included in Git.
+**This is a separate installation step.** Building the app does not include the speech models. You do not need Cisco credentials to install or use local transcription. Cisco access is needed separately for hosted coaching and answers; local coaching also requires its own Ollama models.
 
-If your approved process allows the bundled downloader, these supported commands install models into the inherited model folder:
+For English calls, install these two Whisper models:
+
+| Model | What SalesPilot uses it for |
+| --- | --- |
+| `small.en` | Fast live transcription as people speak; also used by practice |
+| `medium.en` | A refinement pass on completed speech to improve the transcript |
+
+The current final-pass preference is `medium.en`, then `large-v3-turbo`, then the available live model. You do not need to download all three. Provision approved model files through your organization's approved source, or use the built-in downloader below if permitted.
+
+After step 3 has successfully built the app, keep SalesPilot quit, open **Terminal**, and run these commands one at a time. Wait for each download to finish before running the next command:
 
 ```sh
 "$HOME/Applications/SalesPilot.app/Contents/MacOS/SalesPilot" download-model small.en
@@ -79,7 +88,20 @@ If your approved process allows the bundled downloader, these supported commands
 "$HOME/Applications/SalesPilot.app/Contents/MacOS/SalesPilot" set-model small.en
 ```
 
-The current downloader reads the upstream model repository and checks file format, not a pinned approved hash. Use an approved artifact source and verify its license/hash for customer use; these commands do not establish organizational approval. Downloads can take time. Do not run them during a customer call.
+The first two commands download model files; the last selects the default model without downloading it. Files are stored at:
+
+```text
+~/.config/open-wispr/models/ggml-small.en.bin
+~/.config/open-wispr/models/ggml-medium.en.bin
+```
+
+The folder retains the upstream `open-wispr` name. Downloads require internet access, disk space and time; do not run them during a call. If you built to a different app path, substitute that path in each command.
+
+**Check that setup finished:** after launching in step 5, open **More → Before you join** and check the transcription models and Whisper runtime. This checks model availability, not transcription accuracy; verify actual speech in an authorized test before a customer call. The quick guide explains the app's workflow but does not install models or configure Cisco access.
+
+**If something fails:** “No such file or directory” for the app command means step 3 did not produce that app path. For a failed or invalid model download, check the connection and approved artifact source, then retry when no call is active. Do not treat a partially downloaded file as ready. First launch may otherwise try to download the configured default model automatically, so complete this step before launching for a predictable setup.
+
+The downloader reads the upstream model repository and validates file format, not a pinned approved hash. Verify model license/hash through the approved process for customer use. These commands do not establish organizational approval. See [Local transcription and models](#local-transcription-and-models) for supported model locations and local coaching setup.
 
 ### 5 Launch and complete first-use permissions
 
