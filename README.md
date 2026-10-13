@@ -1,6 +1,8 @@
 # SalesPilot
 
-Internal Mac discovery assistant for Solutions Engineers. SalesPilot transcribes a call locally, suggests contextual follow-up questions, tracks discovery-framework evidence, collects notes and retrieves sourced product or competitive answers. It is a development/pilot utility, not a Cisco-approved production deployment.
+SalesPilot is a Mac desktop app for Solutions Engineers that provides real-time discovery suggestions during customer calls. It transcribes locally, uses conversation context to suggest the next useful question, tracks discovery-framework evidence, collects notes and retrieves sourced product or competitive answers.
+
+This repository is **public**: anyone can read or download the source without a collaborator invitation. The app remains a development/pilot utility, not a Cisco-approved production deployment. Public source access does not include Cisco credentials, model files or internal documentation access. There is currently **no prebuilt app, DMG or standalone installer**; install by building from source below.
 
 ## Core platform roadmap
 
@@ -14,11 +16,11 @@ The [complete roadmap](docs/ROADMAP.md) tracks core-platform optimization across
 
 ## Install SalesPilot on your Mac
 
-Follow these steps to install and run SalesPilot on your Mac. The current distribution is **build from source**; there is no standalone installer yet. Start with [the private repository](https://github.com/rodney-splunk/SalesPilot) and build your own app using the instructions below.
+Follow these steps to install and run SalesPilot on your Mac. The current distribution is **build from source**. Download the source from [the public repository](https://github.com/rodney-splunk/SalesPilot) and build your own app using the instructions below. Downloading the repository alone does not install or run the app.
 
-### 1 Get repository access
+### 1 Download the source
 
-Sign into GitHub with the account that has been invited to the private repository. If the link shows 404 or cloning says repository not found, check that account and ask the maintainer to grant access to your verified username. GitHub access does not grant Cisco provider or documentation access.
+No GitHub account or invitation is required to download this public repository. Install the tools in step 2 before using the terminal commands below. GitHub source access does not grant Cisco provider or documentation access.
 
 After prerequisites below are installed, clone once into a stable folder:
 
@@ -28,7 +30,17 @@ git clone https://github.com/rodney-splunk/SalesPilot.git "$HOME/Developer/Sales
 cd "$HOME/Developer/SalesPilot"
 ```
 
-Use your organization's approved GitHub sign-in method. Do not put a GitHub token into the clone URL. If you already cloned the repository, use that existing folder instead of creating another copy.
+Alternatively, open the repository in your browser and choose **Code → Download ZIP**. Extract it, move the extracted `SalesPilot-main` folder to a stable location such as `~/Developer/SalesPilot`, and open Terminal in that folder. Run all subsequent build commands from that repository root. The packaging script currently requires Git history for its build manifest. If you use Download ZIP, initialize a local source snapshot before building:
+
+```sh
+git init
+git add .
+git -c user.name="Local builder" -c user.email="local-builder@example.invalid" commit -m "Local source snapshot"
+```
+
+Do this before adding credentials, models or call data. This creates a local commit only; it does not publish anything. A ZIP download has no upstream Git history, so the `git pull` update instructions apply only to cloned copies; to update a ZIP copy, download a new ZIP and preserve your local configuration and session data before replacing source files.
+
+Anonymous HTTPS cloning needs no GitHub token. If you already cloned the repository, use that existing folder instead of creating another copy.
 
 ### 2 Check the Mac and tools
 
@@ -134,7 +146,7 @@ Install these through your organization's approved process. Homebrew's Apple Sil
 
 ## Build and run
 
-Clone this private repository to a stable location: the development app records the workspace's absolute path when built. Do not move or delete the clone while using that app; rebuild after moving it.
+Clone this public repository to a stable location: the development app records the workspace's absolute path when built. Do not move or delete the clone while using that app; rebuild after moving it.
 
 From the repository root:
 
@@ -161,11 +173,20 @@ For local coaching, install/run an approved Ollama runtime. The engine defaults 
 
 ### Optional speaker embeddings
 
+The example view does not need speaker embeddings. To prepare the optional Python runtime from the repository root:
+
+```sh
+python3 -m venv diarize/.venv
+diarize/.venv/bin/python -m pip install numpy sherpa-onnx
+```
+
+Install only approved package versions for your environment. These commands do not download speaker weights.
+
 Create `diarize/.venv` with approved `numpy` and `sherpa-onnx` packages. Provision an approved compatible speaker embedding model as `diarize/speaker.onnx`; preserve its exact version, hash and license evidence. No weights are shipped here because provenance review remains open. Without the runtime or weights the sidecar falls back to channel attribution. It cannot promise accurate individual attribution or separate simultaneous speech; correct labels in the people strip. Names are associated within a call, not saved in a people library.
 
 ### Cisco CIRCUIT setup
 
-Each developer must obtain her own approved access. GitHub access is not CIRCUIT access. No working credential or client registration is included.
+Each user must obtain their own approved access. Public GitHub access is not CIRCUIT access. No working credential or client registration is included.
 
 Copy `config/circuit.example.json` to `engine/.circuit.json`, then replace the non-secret endpoint/client/version placeholders with the approved registration values. Keep `credential_store` set to `macos-keychain`. Secrets use Keychain service `com.salespilot.circuit`, account `credentials`, containing JSON with `client_secret` and `app_key`.
 
@@ -241,7 +262,7 @@ Change coaching logic with interrupted/fragmented conversations, topic changes a
 
 ## Ownership, licensing and release limits
 
-Private repository access should be restricted to approved collaborators. The upstream open-wispr MIT notice is retained under `open-wispr/LICENSE`. That notice is not a blanket license grant for all new internal SalesPilot code or model artifacts; confirm ownership and distribution rights before broader sharing. Do not publish public releases or export internal competitive material.
+This repository is public. Keep contributions free of credentials, customer transcripts, recordings and internal competitive material. Public visibility does not establish Cisco deployment approval or grant access to internal services. The upstream open-wispr MIT notice is retained under `open-wispr/LICENSE`. That notice is not a blanket license grant for all new internal SalesPilot code or model artifacts; confirm ownership and distribution rights before broader sharing. A packaged release requires the appropriate ownership, licensing, signing and distribution review; do not include internal competitive material.
 
 Customer-call readiness still requires natural multi-party/overlap acceptance, full-hour finalization retest, production latency/outage measurement and organizational decisions on data classification, CIRCUIT terms, consent, retention/backups, EDR, model/dependency approval and signing/distribution. See `docs/ROADMAP.md` and `docs/PRIVACY.md`. This repository does not represent completed Cisco compliance approval.
 
